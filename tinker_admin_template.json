@@ -347,7 +347,7 @@
         "HVMG2": "ami-0aeb704d503081ea6"
       },
       "us-east-2": {
-        "HVM64": "ami-027cab9a7bf0155df",
+        "HVM64": "ami-03f38e546e3dc59e1",
         "HVMG2": "NOT_SUPPORTED"
       },
       "us-west-1": {

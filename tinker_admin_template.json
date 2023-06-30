@@ -347,7 +347,7 @@
         "HVMG2": "ami-0aeb704d503081ea6"
       },
       "us-east-2": {
-        "HVM64": "ami-03f38e546e3dc59e1",
+        "HVM64": "ami-097a2df4ac947655f",
         "HVMG2": "NOT_SUPPORTED"
       },
       "us-west-1": {
@@ -535,12 +535,7 @@
       "Properties": {
         "Domain": "vpc",
         "InstanceId": { "Ref": "TinkerAdminWebServerDB" },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "TinkerAdmin"
-          }
-        ]
+        "Tags": [{ "Key": "Name", "Value": "TinkerAdmin" }]
       }
     },
 
@@ -562,6 +557,13 @@
             "FromPort": "80",
             "ToPort": "80",
             "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "3000",
+            "ToPort": "3000",
+            "CidrIp": "0.0.0.0/0",
+            "Description": "PostgREST"
           }
         ]
       }
@@ -569,41 +571,20 @@
 
     "TinkerAdminWebServerDB": {
       "Type": "AWS::EC2::Instance",
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Timeout": "PT10M",
+          "Count": "1"
+        }
+      },
       "DependsOn": "AttachGateway",
       "Metadata": {
-        "Comment": "Install a simple application",
         "AWS::CloudFormation::Init": {
-          "config": {
-            "packages": {
-              "yum": {
-                "httpd": []
-              }
-            },
-
+          "configSets": {
+            "full_install": ["install_and_enable_cfn_hup"]
+          },
+          "install_and_enable_cfn_hup": {
             "files": {
-              "/var/www/html/index.html": {
-                "content": {
-                  "Fn::Join": [
-                    "\n",
-                    [
-                      "<img src=\"",
-                      {
-                        "Fn::FindInMap": [
-                          "Region2Examples",
-                          { "Ref": "AWS::Region" },
-                          "Examples"
-                        ]
-                      },
-                      "/cloudformation_graphic.png\" alt=\"AWS CloudFormation Logo\"/>",
-                      "<h1>Congratulations, you have successfully launched the AWS CloudFormation sample.</h1>"
-                    ]
-                  ]
-                },
-                "mode": "000644",
-                "owner": "root",
-                "group": "root"
-              },
-
               "/etc/cfn/cfn-hup.conf": {
                 "content": {
                   "Fn::Join": [
@@ -611,10 +592,14 @@
                     [
                       "[main]\n",
                       "stack=",
-                      { "Ref": "AWS::StackId" },
+                      {
+                        "Ref": "AWS::StackId"
+                      },
                       "\n",
                       "region=",
-                      { "Ref": "AWS::Region" },
+                      {
+                        "Ref": "AWS::Region"
+                      },
                       "\n"
                     ]
                   ]
@@ -623,7 +608,6 @@
                 "owner": "root",
                 "group": "root"
               },
-
               "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
                 "content": {
                   "Fn::Join": [
@@ -631,13 +615,18 @@
                     [
                       "[cfn-auto-reloader-hook]\n",
                       "triggers=post.update\n",
-                      "path=Resources.TinkerAdminWebServerDB.Metadata.AWS::CloudFormation::Init\n",
+                      "path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init\n",
                       "action=/opt/aws/bin/cfn-init -v ",
                       "         --stack ",
-                      { "Ref": "AWS::StackName" },
-                      "         --resource TinkerAdminWebServerDB ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "         --resource WebServerInstance ",
+                      "         --configsets InstallAndRun ",
                       "         --region ",
-                      { "Ref": "AWS::Region" },
+                      {
+                        "Ref": "AWS::Region"
+                      },
                       "\n",
                       "runas=root\n"
                     ]
@@ -646,20 +635,31 @@
                 "mode": "000400",
                 "owner": "root",
                 "group": "root"
-              }
-            },
-
-            "services": {
-              "sysvinit": {
-                "httpd": { "enabled": "true", "ensureRunning": "true" },
-                "cfn-hup": {
-                  "enabled": "true",
-                  "ensureRunning": "true",
-                  "files": [
-                    "/etc/cfn/cfn-hup.conf",
-                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+              },
+              "/lib/systemd/system/cfn-hup.service": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[Unit]\n",
+                      "Description=cfn-hup daemon\n\n",
+                      "[Service]\n",
+                      "Type=simple\n",
+                      "ExecStart=/usr/local/bin/cfn-hup\n",
+                      "Restart=always\n\n",
+                      "[Install]\n",
+                      "WantedBy=multi-user.target"
+                    ]
                   ]
                 }
+              }
+            },
+            "commands": {
+              "01enable_cfn_hup": {
+                "command": "systemctl enable cfn-hup.service"
+              },
+              "02start_cfn_hup": {
+                "command": "systemctl start cfn-hup.service"
               }
             }
           }
@@ -700,31 +700,48 @@
               "",
               [
                 "#!/bin/bash -xe\n",
-                "yum update -y aws-cfn-bootstrap\n",
-
-                "/opt/aws/bin/cfn-init -v ",
+                "sudo apt-get update -y\n",
+                "sudo apt-get -y install python3-pip\n",
+                "mkdir -p /opt/aws/\n",
+                "sudo pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz\n",
+                "sudo ln -s /usr/local/init/ubuntu/cfn-hup /etc/init.d/cfn-hup\n",
+                "/usr/local/bin/cfn-init -v ",
                 "         --stack ",
-                { "Ref": "AWS::StackName" },
+                {
+                  "Ref": "AWS::StackName"
+                },
                 "         --resource TinkerAdminWebServerDB ",
+                "         --configsets full_install ",
                 "         --region ",
-                { "Ref": "AWS::Region" },
+                {
+                  "Ref": "AWS::Region"
+                },
                 "\n",
-
-                "/opt/aws/bin/cfn-signal -e $? ",
+                "/usr/local/bin/cfn-signal -e $? ",
                 "         --stack ",
-                { "Ref": "AWS::StackName" },
+                {
+                  "Ref": "AWS::StackName"
+                },
                 "         --resource TinkerAdminWebServerDB ",
                 "         --region ",
-                { "Ref": "AWS::Region" },
-                "\n"
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "sudo apt update\n",
+                "sudo apt install apt-transport-https ca-certificates curl software-properties-common -y\n",
+                "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg\n",
+                "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null\n",
+                "sudo apt update\n",
+                "apt-cache policy docker-ce\n",
+                "sudo apt install -y docker-ce\n",
+                "mkdir -p ~/.docker/cli-plugins/\n",
+                "curl -SL https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose\n",
+                "chmod +x ~/.docker/cli-plugins/docker-compose\n",
+                "sudo -u ubuntu sh -c 'cd ~ && sudo git clone https://github.com/Nodel-Recall/tinker-cli.git && cd tinker-cli/docker && sudo docker compose up -d'\n"
               ]
             ]
           }
-        }
-      },
-      "CreationPolicy": {
-        "ResourceSignal": {
-          "Timeout": "PT15M"
         }
       }
     }

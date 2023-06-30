@@ -1,3 +1,3 @@
-us-east-2 HVM64 AMI is changed to Amazon 2023 Linux AMI
+us-east-2 HVM64 AMI is changed to Ubuntu 22.04
 
-TODO: Update all region AMIs to their latest Amazon 2023 Linux AMI
+TODO: Update all region AMIs to Ubuntu 22.04

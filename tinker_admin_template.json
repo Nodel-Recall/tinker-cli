@@ -10,6 +10,11 @@
       "Description": "Name for the CloudFormation stack"
     },
 
+    "Secret": {
+      "Type": "String",
+      "Description": "For PostgREST to mint and authenticate JWTs. Also required for user sign up into the Admin app."
+    },
+
     "InstanceType": {
       "Description": "WebServer EC2 instance type",
       "Type": "String",

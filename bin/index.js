@@ -1,8 +1,5 @@
 #! /usr/bin/env node
-const yargs = require("yargs");
+import yargs from "yargs";
+import chalk from 'chalk';
 
-console.log("Welcome to Tinker!");
-console.log("Please enter AWS credentials");
-console.log("Email:");
-console.log("Password:");
-console.log("email and password saved to ~/.aws/credentials");
+console.log(chalk.magenta("Welcome to Tinker!"));

@@ -40,7 +40,7 @@ LANGUAGE plpgsql;
 -- $$
 -- LANGUAGE plpgsql;
 
--- updated login function with jwt 
+-- updated login function with jwt
 create or replace function
 login(email text, password text) returns auth.jwt as $$
 declare
@@ -49,7 +49,7 @@ declare
 begin
   -- check email and password
   select auth.user_role(email, password) into _role;
-  
+
   if _role is null then
     raise invalid_password using message = 'invalid user or password';
   end if;
@@ -116,19 +116,19 @@ CREATE OR REPLACE FUNCTION unique_user_email(email TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
   email_exists BOOLEAN;
-BEGIN                  
+BEGIN
   SELECT EXISTS (
     SELECT 1
     FROM auth.users
     WHERE users.email = unique_user_email.email
   ) INTO email_exists;
-                                   
+
   IF email_exists THEN
     RETURN false;
   ELSE
     RETURN true;
   END IF;
-END; 
+END;
 $$
 LANGUAGE plpgsql;
 
@@ -137,32 +137,21 @@ CREATE OR REPLACE FUNCTION unique_username(username TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
   username_exists BOOLEAN;
-BEGIN                  
+BEGIN
   SELECT EXISTS (
     SELECT 1
     FROM auth.users
     WHERE users.username = unique_username.username
   ) INTO username_exists;
-                                   
+
   IF username_exists THEN
     RETURN false;
   ELSE
     RETURN true;
   END IF;
-END; 
-$$
-LANGUAGE plpgsql;
-
---store the secret as a property of the db
-CREATE OR REPLACE FUNCTION auth.set_db_secret(secret TEXT)
-RETURNS void AS
-$$
-BEGIN
-  EXECUTE 'ALTER DATABASE postgres SET "app.jwt_secret" TO ' || quote_literal(secret);
 END;
 $$
 LANGUAGE plpgsql;
-
 
 create or replace function get_username(email text, password text) returns text
   as $$

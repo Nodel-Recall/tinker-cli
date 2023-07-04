@@ -20,9 +20,9 @@ CREATE TABLE auth.users (
 
 -- roles (authenticator, admin and anon) setup for frontend JWt
 
-CREATE ROLE authenticator LOGIN NOINHERIT NOCREATEDB NOCREATEROLE NOSUPERUSER;
+CREATE ROLE authenticator LOGIN PASSWORD 'password' NOINHERIT NOCREATEDB NOCREATEROLE NOSUPERUSER;
 
-CREATE ROLE admin superuser LOGIN PASSWORD'password' CREATEDB REPLICATION CREATEROLE;
+CREATE ROLE admin superuser LOGIN PASSWORD 'password' CREATEDB REPLICATION CREATEROLE;
 
 GRANT admin TO authenticator;
 
@@ -61,6 +61,16 @@ create trigger encrypt_password
 CREATE TYPE auth.jwt AS (
   token text
 );
+
+--store the secret as a property of the db
+CREATE OR REPLACE FUNCTION auth.set_db_secret(secret TEXT)
+RETURNS void AS
+$$
+BEGIN
+  EXECUTE 'ALTER DATABASE tinker SET "app.jwt_secret" TO ' || quote_literal(secret);
+END;
+$$
+LANGUAGE plpgsql;
 
 --store the secret as a property of the db (uses custon function set_db_secret())
 SELECT auth.set_db_secret('zH4NRP1HMALxxCFnRZABFA7GOJtzU_gIj02alfL1lvI');

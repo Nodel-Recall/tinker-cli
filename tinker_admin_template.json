@@ -756,6 +756,16 @@
         ]
       },
       "Description": "Newly created application URL"
+    },
+    "SubnetId": {
+      "Description": "Subnet for future EC2 instances",
+      "Value": { "Ref": "TinkerAdminSubnet" },
+      "Export": { "Name": "ProjectSubnetId" }
+    },
+    "SecurityGroupId": {
+      "Description": "Security group for EC2",
+      "Value": { "Ref": "TinkerAdminWebServerDBSecurityGroup" },
+      "Export": { "Name": "SecurityGroupId" }
     }
   }
 }

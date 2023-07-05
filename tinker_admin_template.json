@@ -747,7 +747,7 @@
                 {
                   "Ref": "Secret"
                 },
-                "\" >> /etc/environment",
+                "\" >> /etc/environment\n",
                 "sudo -u ubuntu sh -c 'cd ~ && sudo git clone https://github.com/Nodel-Recall/tinker-cli.git && cd tinker-cli/docker && sudo docker compose up -d'\n"
               ]
             ]

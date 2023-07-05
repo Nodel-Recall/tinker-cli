@@ -62,18 +62,21 @@ CREATE TYPE auth.jwt AS (
   token text
 );
 
+-- Set app.jwt_secret in docker compose, so we don't need this function - Peter
+
 --store the secret as a property of the db
-CREATE OR REPLACE FUNCTION auth.set_db_secret(secret TEXT)
-RETURNS void AS
-$$
-BEGIN
-  EXECUTE 'ALTER DATABASE tinker SET "app.jwt_secret" TO ' || quote_literal(secret);
-END;
-$$
-LANGUAGE plpgsql;
+-- CREATE OR REPLACE FUNCTION auth.set_db_secret(secret TEXT)
+-- RETURNS void AS
+-- $$
+-- BEGIN
+--   EXECUTE 'ALTER DATABASE tinker SET "app.jwt_secret" TO ' || quote_literal(secret);
+-- END;
+-- $$
+-- LANGUAGE plpgsql;
 
 --store the secret as a property of the db (uses custon function set_db_secret())
-SELECT auth.set_db_secret('zH4NRP1HMALxxCFnRZABFA7GOJtzU_gIj02alfL1lvI');
+-- SELECT auth.set_db_secret('zH4NRP1HMALxxCFnRZABFA7GOJtzU_gIj02alfL1lvI');
+
 -- ALTER DATABASE postgres SET "app.jwt_secret" TO 'zH4NRP1HMALxxCFnRZABFA7GOJtzU_gIj02alfL1lvI';
 
 -- Install package 'pgjwt' for JWT generation in PSQL

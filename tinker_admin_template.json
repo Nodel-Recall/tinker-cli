@@ -743,7 +743,11 @@
                 "mkdir -p ~/.docker/cli-plugins/\n",
                 "curl -SL https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose\n",
                 "chmod +x ~/.docker/cli-plugins/docker-compose\n",
-                "sudo -u ubuntu sh -c 'cd ~ && sudo git clone https://github.com/Nodel-Recall/tinker-cli.git && cd tinker-cli/docker && sudo docker compose up -d'\n"
+                "sudo -u ubuntu sh -c 'cd ~ && echo \"export PGRST_JWT_SECRET=",
+                {
+                  "Ref": "Secret"
+                },
+                "\" >> /etc/environment && sudo git clone https://github.com/Nodel-Recall/tinker-cli.git && cd tinker-cli/docker && sudo docker compose up -d'\n"
               ]
             ]
           }

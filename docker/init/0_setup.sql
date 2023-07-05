@@ -2,12 +2,20 @@
 
 CREATE SCHEMA auth;
 
-CREATE TABLE project (
-    name      VARCHAR(40)  NOT NULL CONSTRAINT only_chars CHECK (name ~ '^[a-zA-Z]+$'),
-    ip        INET         NOT NULL,
-    secret    VARCHAR(40)  NOT NULL,
-    anon_jwt  VARCHAR(300) NOT NULL,
-    admin_jwt VARCHAR(300) NOT NULL
+-- previous project table where sercret was unique to each project
+
+-- CREATE TABLE project (
+--     name      VARCHAR(128)  PRIMARY KEY CONSTRAINT only_alphanumeric CHECK (name ~ '^[a-zA-Z][a-zA-Z0-9-]+$'),
+--     ip        INET         NOT NULL UNIQUE,
+--     secret    VARCHAR(40)  NOT NULL UNIQUE,
+--     anon_jwt  VARCHAR(300) NOT NULL,
+--     admin_jwt VARCHAR(300) NOT NULL
+-- );
+
+-- new projects table where the secret is the same as the admin app db
+CREATE TABLE projects (
+    name      VARCHAR(128)  PRIMARY KEY CONSTRAINT only_alphanumeric CHECK (name ~ '^[a-zA-Z][a-zA-Z0-9-]+$'),
+    ip        INET         NOT NULL UNIQUE
 );
 
 --private users table for Tinker backend
@@ -64,6 +72,7 @@ CREATE TYPE auth.jwt AS (
 
 -- Set app.jwt_secret in docker compose, so we don't need this function - Peter
 
+--(
 --store the secret as a property of the db
 -- CREATE OR REPLACE FUNCTION auth.set_db_secret(secret TEXT)
 -- RETURNS void AS
@@ -78,6 +87,7 @@ CREATE TYPE auth.jwt AS (
 -- SELECT auth.set_db_secret('zH4NRP1HMALxxCFnRZABFA7GOJtzU_gIj02alfL1lvI');
 
 -- ALTER DATABASE postgres SET "app.jwt_secret" TO 'zH4NRP1HMALxxCFnRZABFA7GOJtzU_gIj02alfL1lvI';
+--)
 
 -- Install package 'pgjwt' for JWT generation in PSQL
 -- git clone https://github.com/michelp/pgjwt.git

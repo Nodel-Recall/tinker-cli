@@ -1,15 +1,24 @@
 #! /usr/bin/env node
+// TODO: Update to AWS SDK V3 with native promise API
+// TODO: Console log stack creation events
+
 import yargs from "yargs";
 import chalk from "chalk";
+import ora from "ora";
 
 import {
   CloudFormation,
-  RegistrationStatus,
+  waitUntilStackCreateComplete,
 } from "@aws-sdk/client-cloudformation";
 import fs from "fs";
 import util from "util";
 import readline from "readline";
 import cryptoRandomString from "crypto-random-string";
+
+const spinner = ora({
+  text: "Deploying to AWS... This may take up to 15 minutes!",
+  color: "cyan",
+});
 
 const tinkerPurple = chalk.rgb(99, 102, 241);
 
@@ -93,13 +102,17 @@ const promisifyCreateStack = async (cloudFormation, stackParams) => {
   });
 };
 
-const createStack = async (cloudFormation, stackParams) => {
+const createStack = async (cloudFormation, stackParams, spinner) => {
   try {
+    spinner.start();
+
     const data = await promisifyCreateStack(cloudFormation, stackParams);
-    console.log(tinkerPurple("Stack creation initiated:"), data.StackId);
-    process.exit(0);
-  } catch (err) {
-    console.error(chalk.red("Error creating stack:"), err);
+  } catch (error) {
+    setTimeout(() => {
+      spinner.fail("Deployment failed!");
+    }, 1000);
+
+    console.error(chalk.red("Error creating stack:"), error);
     process.exit(1);
   }
 };
@@ -111,8 +124,6 @@ let secret = cryptoRandomString({
   length: minSecretLength,
   type: "alphanumeric",
 });
-
-console.log(tinkerPurple("Your secret is"), secret);
 
 const cloudFormation = new CloudFormation({ region });
 
@@ -127,4 +138,68 @@ const stackParams = {
   ],
 };
 
-await createStack(cloudFormation, stackParams);
+const waitStack = async (cloudFormation, stackName, spinner) => {
+  const waiterParams = {
+    client: cloudFormation,
+    maxWaitTime: 900,
+  };
+
+  const describeStacksCommandInput = {
+    StackName: stackName,
+  };
+
+  try {
+    await waitUntilStackCreateComplete(
+      waiterParams,
+      describeStacksCommandInput
+    );
+
+    spinner.succeed("Deployment complete!");
+  } catch (error) {
+    spinner.fail("Deployment failed!");
+
+    console.error(chalk.red("Error waiting for stack to complete"), error);
+    process.exit(1);
+  }
+};
+
+const promisifyDescribeStack = async (cloudFormation, stackParams) => {
+  return new Promise((resolve, reject) => {
+    cloudFormation.describeStacks(stackParams, (error, data) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(data);
+      }
+    });
+  });
+};
+
+const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
+  try {
+    let data = await promisifyDescribeStack(cloudFormation, stackParams);
+    const stack = data.Stacks[0];
+    const outputs = stack.Outputs;
+
+    const url = outputs.find((o) => o.OutputKey === "URL").OutputValue;
+    return url;
+  } catch (error) {
+    spinner.fail("Deployment failed!");
+
+    console.error(chalk.red("Error creating stack:"), error);
+    process.exit(1);
+  }
+};
+
+await createStack(cloudFormation, stackParams, spinner);
+await waitStack(cloudFormation, stackName, spinner);
+
+let adminAppURL = await retrieveStackOutputs(cloudFormation, {
+  StackName: stackName,
+});
+
+console.log();
+console.log(tinkerPurple(`Your admin portal: ${chalk.green(adminAppURL)}`));
+console.log(tinkerPurple(`Your secret to create accounts: ${chalk.green(secret)}`));
+
+process.exit(0);

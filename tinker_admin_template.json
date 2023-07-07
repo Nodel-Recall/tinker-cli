@@ -356,7 +356,7 @@
         "HVMG2": "NOT_SUPPORTED"
       },
       "us-west-1": {
-        "HVM64": "ami-088c153f74339f34c",
+        "HVM64": "ami-0f8e81a3da6e2510a",
         "HVMG2": "ami-0a7fc72dc0e51aa77"
       },
       "us-west-2": {
@@ -738,6 +738,16 @@
                 "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg\n",
                 "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null\n",
                 "sudo apt update\n",
+                "curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -\n",
+                "sudo apt install nodejs -y\n",
+                "cd home/ubuntu && sudo git https://github.com/Nodel-Recall/tinker-admin-app.git\n",
+                "sudo git clone https://github.com/Nodel-Recall/tinker-cli.git\n",
+                "cd tinker-admin-app && sudo npm install -y\n",
+
+                "sudo chown ubuntu:ubuntu .env\n",
+                "sudo echo REACT_APP_ADMIN_URL=$(curl http://169.254.169.254/latest/meta-data/public-ipv4) >> .env\n",
+                "sudo npm run build\n",
+                "mv build ../tinker-cli/docker\n",
                 "apt-cache policy docker-ce\n",
                 "sudo apt install -y docker-ce\n",
                 "mkdir -p ~/.docker/cli-plugins/\n",
@@ -748,7 +758,7 @@
                   "Ref": "Secret"
                 },
                 "\" >> /etc/environment\n",
-                "sudo -u ubuntu sh -c 'cd ~ && sudo git clone https://github.com/Nodel-Recall/tinker-cli.git && cd tinker-cli/docker && sudo docker compose up -d'\n"
+                "sudo -u ubuntu sh -c 'cd ~ && cd tinker-cli/docker && sudo docker compose up -d'\n"
               ]
             ]
           }

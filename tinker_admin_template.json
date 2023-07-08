@@ -740,7 +740,7 @@
                 "sudo apt update\n",
                 "curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -\n",
                 "sudo apt install nodejs -y\n",
-                "cd home/ubuntu && sudo git clone https://github.com/Nodel-Recall/tinker-admin-app.git\n",
+                "cd home/ubuntu && sudo git clone --branch proto/https https://github.com/Nodel-Recall/tinker-admin-app.git\n",
                 "sudo git clone https://github.com/Nodel-Recall/tinker-cli.git\n",
                 "cd tinker-admin-app && sudo npm install -y\n",
 

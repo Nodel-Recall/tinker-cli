@@ -29,6 +29,8 @@ services:
       # anything in html directory is hosted via nginx
       - "./build:/usr/share/caddy/build"
       - "./site/Caddyfile:/etc/caddy/Caddyfile"
+    environment:
+      IP_ADDRESS: ${IP_ADDRESS}
     restart: always
 
   #############

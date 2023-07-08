@@ -81,7 +81,7 @@
     "KeyName": {
       "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
       "Type": "AWS::EC2::KeyPair::KeyName",
-      "Default": "tinker_keys",
+      "Default": "MyKeyPair",
       "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
     },
 
@@ -741,7 +741,7 @@
                 "curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -\n",
                 "sudo apt install nodejs -y\n",
                 "cd home/ubuntu && sudo git clone https://github.com/Nodel-Recall/tinker-admin-app.git\n",
-                "sudo git clone https://github.com/Nodel-Recall/tinker-cli.git\n",
+                "sudo git clone -b caddy_test https://github.com/Nodel-Recall/tinker-cli.git\n",
                 "cd tinker-admin-app && sudo npm install -y\n",
 
                 "sudo chown ubuntu:ubuntu .env\n",

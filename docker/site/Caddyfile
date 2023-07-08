@@ -1,5 +1,8 @@
 jarednaylor.com {
   root * /usr/share/caddy/build
   file_server
+  handle_path /api/* {
+    @api
+  }
   reverse_proxy @api http://localhost:3000
 }

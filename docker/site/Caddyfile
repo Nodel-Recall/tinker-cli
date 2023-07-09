@@ -1,3 +1,7 @@
+{
+  email jared2475@att.net
+}
+
 jarednaylor.com {
   root * /usr/share/caddy/build
   file_server

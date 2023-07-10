@@ -34,6 +34,7 @@ services:
       - "./build:/usr/share/caddy/build"
       - "./site/Caddyfile:/etc/caddy/Caddyfile"
     restart: always
+    depends_on: postgrest
     networks:
       - caddy
 

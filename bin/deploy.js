@@ -79,6 +79,34 @@ const promisifyRegionQuestion = () => {
   });
 };
 
+const promisifyDomainQuestion = () => {
+  return new Promise((resolve, reject) => {
+    rl.question(tinkerPurple("Enter the domain: "), (answer) => {
+      if (!isValidDomain(answer)) {
+        reject(chalk.red("Invalid domain"));
+      }
+
+      resolve(answer);
+    });
+  });
+};
+
+const isValidDomain = (domain) => {
+  const regex = /^(?!:\/\/)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63}$/;
+  return regex.test(domain);
+};
+
+const askDomain = async () => {
+  try {
+    let domain = await promisifyDomainQuestion();
+    return domain;
+  } catch (error) {
+    console.error(error);
+    rl.close();
+    process.exit(1);
+  }
+};
+
 const askRegion = async () => {
   try {
     let region = await promisifyRegionQuestion();
@@ -119,6 +147,7 @@ const createStack = async (cloudFormation, stackParams, spinner) => {
 
 let template = await readTemplateFromFile(templatePath, encoding);
 let region = await askRegion();
+let domain = await askDomain();
 
 let secret = cryptoRandomString({
   length: minSecretLength,
@@ -175,6 +204,26 @@ const promisifyDescribeStack = async (cloudFormation, stackParams) => {
   });
 };
 
+const appendFileAsync = util.promisify(fs.appendFile);
+
+const writeDomainToFile = async () => {
+  try {
+    await appendFileAsync(".env", `DOMAIN_NAME=${domain}`);
+  } catch (error) {
+    console.error(error);
+    console.log("Error saving configuration to file.");
+  }
+};
+
+const writeSecretToFile = async () => {
+  try {
+    await appendFileAsync(".env", `\nSECRET=${secret}`);
+  } catch (error) {
+    console.error(error);
+    console.log("Error saving configuration to file.");
+  }
+};
+
 const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
   try {
     let data = await promisifyDescribeStack(cloudFormation, stackParams);
@@ -191,6 +240,11 @@ const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
   }
 };
 
+const updateConfigurationFiles = async () => {
+  await writeDomainToFile();
+  await writeSecretToFile();
+};
+
 await createStack(cloudFormation, stackParams, spinner);
 await waitStack(cloudFormation, stackName, spinner);
 
@@ -198,8 +252,12 @@ let adminAppURL = await retrieveStackOutputs(cloudFormation, {
   StackName: stackName,
 });
 
+await updateConfigurationFile();
+
 console.log();
 console.log(tinkerPurple(`Your admin portal: ${chalk.green(adminAppURL)}`));
-console.log(tinkerPurple(`Your secret to create accounts: ${chalk.green(secret)}`));
+console.log(
+  tinkerPurple(`Your secret to create accounts: ${chalk.green(secret)}`)
+);
 
 process.exit(0);

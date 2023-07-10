@@ -9,6 +9,11 @@
       "Default": "ProjectInstance",
       "Description": "Name for the CloudFormation stack"
     },
+    "ProjectName": {
+      "Type": "String",
+      "Default": "ProjectInstance",
+      "Description": "Name for the EC2 Instance"
+    },
 
     "InstanceType": {
       "Description": "EC2 instance type",
@@ -475,7 +480,7 @@
         "KeyName": { "Ref": "KeyName" },
         "Tags": [
           { "Key": "Application", "Value": { "Ref": "AWS::StackId" } },
-          { "Key": "Name", "Value": "ProjectInstance" }
+          { "Key": "Name", "Value": { "Ref": "ProjectName" } }
         ],
         "NetworkInterfaces": [
           {

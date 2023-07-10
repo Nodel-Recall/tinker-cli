@@ -2,8 +2,8 @@
   email jared2475@att.net
 }
 
-jarednaylor.com {
+ {env.IP_ADDRESS} {
   root * /usr/share/caddy/build
   file_server
-  reverse_proxy /api http://localhost:3000
+  reverse_proxy :3000
 }

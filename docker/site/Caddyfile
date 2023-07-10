@@ -2,7 +2,7 @@
   email jared2475@att.net
 }
 
- {env.IP_ADDRESS} {
+ {placeholder_domain} {
   root * /usr/share/caddy/build
   file_server
   reverse_proxy :3000

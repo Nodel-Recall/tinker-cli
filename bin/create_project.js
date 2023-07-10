@@ -1,4 +1,3 @@
-import yargs from "yargs";
 import chalk from "chalk";
 import ora from "ora";
 import axios from "axios";
@@ -18,7 +17,13 @@ const spinner = ora({
 
 const tinkerPurple = chalk.rgb(99, 102, 241);
 
-const stackName = process.argv[2];
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+// const stackName = process.argv[2];
+let stackName;
 const templatePath = "./tinker_create_project_template.json";
 const encoding = "utf8";
 
@@ -34,17 +39,52 @@ const readTemplateFromFile = async (templatePath, encoding) => {
   }
 };
 
-// const promisifyStackNameQuestion = () => {
-//   return new Promise((resolve, reject) => {
-//     rl.question(tinkerPurple("Enter the project name: "), (answer) => {
-//       if (!awsRegions.includes(answer)) {
-//         reject(chalk.red("Invalid region"));
-//       }
+const validProjectName = (projectName) => {
+  if (whiteSpace(projectName)) return false;
+  const match = projectName.match(/^[a-zA-Z][a-zA-Z0-9-]+$/g);
+  if (!match) {
+    return false;
+  }
+  return match[0] === projectName;
+};
 
-//       resolve(answer);
-//     });
-//   });
-// };
+const whiteSpace = (projectName) => {
+  const trimmed = projectName.replace(" ", "");
+  if (trimmed === projectName) {
+    return false;
+  }
+  return true;
+};
+
+const promisifyProjectNameQuestion = () => {
+  return new Promise((resolve, reject) => {
+    rl.question(
+      tinkerPurple(
+        "Enter Project Name (alphanumeric chars and hyphens only): "
+      ),
+      (answer) => {
+        if (!validProjectName(answer)) {
+          reject(
+            chalk.red(
+              "Invalid Name. Alphanumeric chars and hyphens only. Name must start with an alphanumeric char."
+            )
+          );
+        }
+        resolve(answer);
+      }
+    );
+  });
+};
+
+const getProjectName = async () => {
+  try {
+    return await promisifyProjectNameQuestion();
+  } catch (error) {
+    console.log("error getting projuct name input", error);
+  }
+};
+
+stackName = await getProjectName();
 
 const promisifyCreateStack = async (cloudFormation, stackParams) => {
   return new Promise((resolve, reject) => {
@@ -61,14 +101,20 @@ const promisifyCreateStack = async (cloudFormation, stackParams) => {
 
 const createStack = async (cloudFormation, stackParams) => {
   try {
+    spinner.start();
+
     const data = await promisifyCreateStack(cloudFormation, stackParams);
   } catch (error) {
+    setTimeout(() => {
+      spinner.fail("Deployment failed!");
+    }, 1000);
+
     console.log("Stack creation failed.");
     process.exit(1);
   }
 };
 
-const waitStack = async (cloudFormation, stackName) => {
+const waitStack = async (cloudFormation, stackName, spinner) => {
   const waiterParams = {
     client: cloudFormation,
     maxWaitTime: 900,
@@ -83,7 +129,9 @@ const waitStack = async (cloudFormation, stackName) => {
       waiterParams,
       describeStacksCommandInput
     );
+    spinner.succeed("Deployment complete!");
   } catch (error) {
+    spinner.fail("Deployment failed!");
     console.log("Timed out waiting for Stack to complete.");
     process.exit(1);
   }
@@ -101,7 +149,7 @@ const promisifyDescribeStack = async (cloudFormation, stackParams) => {
   });
 };
 
-const retrieveStackOutputs = async (cloudFormation, stackParams) => {
+const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
   try {
     let data = await promisifyDescribeStack(cloudFormation, stackParams);
     const outputs = data.Stacks[0].Outputs;
@@ -109,6 +157,8 @@ const retrieveStackOutputs = async (cloudFormation, stackParams) => {
     const url = outputs.find((o) => o.OutputKey === "URL").OutputValue;
     return url;
   } catch (error) {
+    spinner.fail("Deployment failed!");
+
     console.log("Error returning the IP Address of the Project.");
     process.exit(1);
   }
@@ -129,11 +179,17 @@ export const createProject = async (stackName) => {
   const stackParams = {
     StackName: stackName,
     TemplateBody: template,
+    Parameters: [
+      {
+        ParameterKey: "ProjectName",
+        ParameterValue: stackName,
+      },
+    ],
   };
 
   try {
-    await createStack(cloudFormation, stackParams);
-    await waitStack(cloudFormation, stackName);
+    await createStack(cloudFormation, stackParams, spinner);
+    await waitStack(cloudFormation, stackName, spinner);
     const IPAddress = await retrieveStackOutputs(cloudFormation, stackParams);
     //send IPaddress with stackName to projects backend
     return IPAddress;
@@ -142,4 +198,9 @@ export const createProject = async (stackName) => {
   }
 };
 
-createProject(stackName);
+await createProject(stackName);
+
+console.log();
+console.log(tinkerPurple("Your project was created successfully!"));
+
+process.exit(0);

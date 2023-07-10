@@ -2,7 +2,6 @@
 // TODO: Update to AWS SDK V3 with native promise API
 // TODO: Console log stack creation events
 
-import yargs from "yargs";
 import chalk from "chalk";
 import ora from "ora";
 
@@ -85,7 +84,6 @@ const promisifyDomainQuestion = () => {
       if (!isValidDomain(answer)) {
         reject(chalk.red("Invalid domain"));
       }
-
       resolve(answer);
     });
   });

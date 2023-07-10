@@ -2,11 +2,10 @@
   email jared2475@att.net
 }
 
-{placeholder_domain} {
-  root * /usr/share/caddy/build
-  file_server
+http://54.219.105.208.nip.io {
+  redir https://54.219.105.208.nip.io{uri}
 }
 
-{another_placeholder} {
-  reverse_proxy {another_placeholder}:3000
+https://54.219.105.208.nip.io {
+  reverse_proxy https://54.219.105.208:3000
 }

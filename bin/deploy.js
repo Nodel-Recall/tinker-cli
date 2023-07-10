@@ -252,7 +252,7 @@ let adminAppURL = await retrieveStackOutputs(cloudFormation, {
   StackName: stackName,
 });
 
-await updateConfigurationFile();
+await updateConfigurationFiles();
 
 console.log();
 console.log(tinkerPurple(`Your admin portal: ${chalk.green(adminAppURL)}`));

@@ -9,6 +9,8 @@ import {
 import fs from "fs";
 import util from "util";
 import readline from "readline";
+import * as jose from "jose";
+import "dotenv/config";
 
 const spinner = ora({
   text: "Deploying to AWS... This may take up to 15 minutes!",
@@ -21,6 +23,19 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
+
+async function generateJWT(jwtSecret) {
+  try {
+    const secret = new TextEncoder().encode(jwtSecret);
+    const alg = "HS256";
+    const jwt = await new jose.SignJWT({ role: "admin" })
+      .setProtectedHeader({ alg })
+      .sign(secret);
+    return jwt;
+  } catch (error) {
+    console.log("Could not generate JWT.");
+  }
+}
 
 // const stackName = process.argv[2];
 let stackName;
@@ -166,7 +181,12 @@ const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
 
 const updateProjectsTable = async () => {
   try {
-    await axios.post(`https://admin.${process.env.DOMAIN_NAME}:3000`);
+    const jwt = generateJWT(process.env.SECRET);
+    await axios.post(
+      `https://admin.${process.env.DOMAIN_NAME}:3000/projects`,
+      { name: stackName, domain: process.env.DOMAIN_NAME },
+      { headers: { Authorization: `Bearer ${jwt}` } }
+    );
   } catch (error) {
     console.error(error);
     console.log("Error updating projects");

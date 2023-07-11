@@ -181,11 +181,12 @@ const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
 
 const updateProjectsTable = async () => {
   try {
-    const jwt = generateJWT(process.env.SECRET);
+
     await axios.post(
-      `https://admin.${process.env.DOMAIN_NAME}:3000/projects`,
-      { name: stackName, domain: process.env.DOMAIN_NAME },
-      { headers: { Authorization: `Bearer ${jwt}` } }
+      `https://admin.${process.env.DOMAIN_NAME}:3000`,
+      { name: stackName, subdomain: `${stackName}.${process.env.DOMAIN_NAME}` },
+      { Authorization: `Bearer ${jwt}` }
+
     );
   } catch (error) {
     console.error(error);
@@ -219,8 +220,8 @@ export const createProject = async (stackName) => {
 };
 
 await createProject(stackName);
+updateProjectsTable();
 
 console.log();
 console.log(tinkerPurple("Your project was created successfully!"));
-
 process.exit(0);

@@ -34,6 +34,8 @@ services:
       - "./build:/usr/share/caddy/build"
       - "./site/Caddyfile:/etc/caddy/Caddyfile"
     restart: always
+    environment:
+      - CADDY_OPTIONS=--global-option debug
     depends_on:
       - postgrest
     networks:

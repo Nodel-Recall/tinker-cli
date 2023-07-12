@@ -2,15 +2,15 @@
   email jared2475@att.net
 }
 
-http://50.18.70.176.nip.io {
-  redir https://50.18.70.176.nip.io{uri}
+http://54.151.9.67.nip.io {
+  redir https://54.151.9.67.nip.io{uri}
 }
 
-https://50.18.70.176.nip.io {
+https://54.151.9.67.nip.io {
   root * /usr/share/caddy/build
   file_server
-  @proxy3000 {
-    header Host *:3000
-  }
-  reverse_proxy @proxy3000 http://localhost:3000
+}
+
+https://admin.54.151.9.67.nip.io:3000 {
+  reverse_proxy  server:3000
 }

@@ -90,6 +90,17 @@ const promisifyDomainQuestion = () => {
   });
 };
 
+const promisifyHostedZoneIdQuestion = () => {
+  return new Promise((resolve, reject) => {
+    rl.question(
+      tinkerPurple("Enter the domain's Hosted Zone Id: "),
+      (answer) => {
+        resolve(answer);
+      }
+    );
+  });
+};
+
 const isValidDomain = (domain) => {
   const regex = /^(?!:\/\/)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63}$/;
   return regex.test(domain);
@@ -110,6 +121,17 @@ const askRegion = async () => {
   try {
     let region = await promisifyRegionQuestion();
     return region;
+  } catch (error) {
+    console.error(error);
+    rl.close();
+    process.exit(1);
+  }
+};
+
+const askHostedZoneId = async () => {
+  try {
+    let hostedZoneId = await promisifyHostedZoneIdQuestion();
+    return hostedZoneId;
   } catch (error) {
     console.error(error);
     rl.close();
@@ -147,6 +169,12 @@ const createStack = async (cloudFormation, stackParams, spinner) => {
 let template = await readTemplateFromFile(templatePath, encoding);
 let region = await askRegion();
 let domain = await askDomain();
+let HostedZoneId = await askHostedZoneId();
+
+let WildcardSubdomainName = `*.${domain}`;
+let AdminSubdomain = `admin.${domain}`;
+let HostedZoneName = domain;
+
 await createTinkerKeys(region);
 
 let secret = cryptoRandomString({
@@ -163,6 +191,22 @@ const stackParams = {
     {
       ParameterKey: "Secret",
       ParameterValue: secret,
+    },
+    {
+      ParameterKey: "WildcardSubdomainName",
+      ParameterValue: WildcardSubdomainName,
+    },
+    {
+      ParameterKey: "AdminSubdomain",
+      ParameterValue: AdminSubdomain,
+    },
+    {
+      ParameterKey: "HostedZoneName",
+      ParameterValue: HostedZoneName,
+    },
+    {
+      ParameterKey: "HostedZoneId",
+      ParameterValue: HostedZoneId,
     },
   ],
 };
@@ -255,7 +299,7 @@ let adminAppURL = await retrieveStackOutputs(cloudFormation, {
 await updateConfigurationFiles();
 
 console.log();
-console.log(tinkerPurple(`Your admin portal: ${chalk.green(adminAppURL)}`));
+console.log(tinkerPurple(`Your admin portal: ${chalk.green(`https://${AdminSubdomain}`)}`));
 console.log(
   tinkerPurple(`Your secret to create accounts: ${chalk.green(secret)}`)
 );

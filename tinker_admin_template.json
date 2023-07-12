@@ -763,12 +763,16 @@
                 "sudo apt update\n",
                 "curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -\n",
                 "sudo apt install nodejs -y\n",
-                "cd home/ubuntu && sudo git clone --branch proto/https https://github.com/Nodel-Recall/tinker-admin-app.git\n",
+                "cd home/ubuntu && sudo git clone https://github.com/Nodel-Recall/tinker-admin-app.git\n",
                 "sudo git clone https://github.com/Nodel-Recall/tinker-cli.git\n",
                 "cd tinker-admin-app && sudo npm install -y\n",
 
                 "sudo chown ubuntu:ubuntu .env\n",
-                "sudo echo -e \"\nREACT_APP_ADMIN_URL=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)\" >> .env\n",
+                "sudo echo -e \"\nREACT_APP_ADMIN_URL=",
+                {
+                  "Ref": "AdminSubdomain"
+                },
+                "\" >> .env\n",
                 "sudo npm run build\n",
                 "mv build ../tinker-cli/docker\n",
                 "apt-cache policy docker-ce\n",

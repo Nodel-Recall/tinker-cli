@@ -88,31 +88,35 @@ const createStackParams = {
   Parameters: [
     {
       ParameterKey: "TinkerVPCId",
-      ParameterValue: "vpc-0123c8b9365a817e5",
+      ParameterValue: "vpc-05870cbd131a86582",
     },
     {
       ParameterKey: "TinkerAdminSubnetId",
-      ParameterValue: "subnet-045ca0e9c5efdce0b",
+      ParameterValue: "subnet-0cd39aebf970e97e6",
+    },
+    {
+      ParameterKey: "TinkerAdminRouteTableId",
+      ParameterValue: "rtb-0f1cd7a3e1e17edc2",
     },
     {
       ParameterKey: "TinkerAdminAppEC2Id",
-      ParameterValue: "i-018d836b33ac7069a",
+      ParameterValue: "i-0b24bceec26c7a367",
     },
     {
       ParameterKey: "SubdomainName",
-      ParameterValue: "*.wshosugihara.com",
+      ParameterValue: "*.badbud.net",
     },
     {
       ParameterKey: "AdminSubdomain",
-      ParameterValue: "admin.wshosugihara.com",
+      ParameterValue: "admin.badbud.net",
     },
     {
       ParameterKey: "HostedZoneName",
-      ParameterValue: "wshosugihara.com.",
+      ParameterValue: "badbud.net",
     },
      {
       ParameterKey: "HostedZoneId",
-      ParameterValue: "Z02497723PKJWYU1J9N4A",
+      ParameterValue: "Z04496672BBIBQSBM3YR9",
     },
   ],
 };

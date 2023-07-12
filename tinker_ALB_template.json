@@ -12,6 +12,10 @@
       "Type": "AWS::EC2::Subnet::Id",
       "Description": "Tinker Admin Subnet ID"
     },
+    "TinkerAdminRouteTableId": {
+      "Type": "String",
+      "Description": "Tinker Admin Route Table ID"
+    },
     "TinkerAdminAppEC2Id": {
       "Type": "AWS::EC2::Instance::Id",
       "Description": "Tinker Admin App EC2 ID"
@@ -290,14 +294,22 @@
       }
     },
 
+    "SubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": { "Ref": "TinkerEmptySubnet" },
+        "RouteTableId": { "Ref": "TinkerAdminRouteTableId" }
+      }
+    },
+
     "TinkerRecordSetAdmin": {
       "Type": "AWS::Route53::RecordSet",
       "Properties": {
         "Name": {
           "Ref": "AdminSubdomain"
         },
-        "HostedZoneName": {
-          "Ref": "HostedZoneName"
+        "HostedZoneId": {
+          "Ref": "HostedZoneId"
         },
         "AliasTarget": {
           "HostedZoneId": {

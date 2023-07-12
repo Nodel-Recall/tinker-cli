@@ -15,6 +15,26 @@
       "Description": "For PostgREST to mint and authenticate JWTs. Also required for user sign up into the Admin app."
     },
 
+    "WildcardSubdomainName": {
+      "Type": "String",
+      "Description": "Name of the subdomain e.g. *.tinker.com"
+    },
+
+    "AdminSubdomain": {
+      "Type": "String",
+      "Description": "Name of the admin subdomain e.g. admin.tinker.com"
+    },
+
+    "HostedZoneName": {
+      "Type": "String",
+      "Description": "Name of the hosted zone (domain with a trailing dot). E.g. tinker.com."
+    },
+
+    "HostedZoneId": {
+      "Type": "AWS::Route53::HostedZone::Id",
+      "Description": "ID of the hosted zone associated with the admin subdomain"
+    },
+
     "InstanceType": {
       "Description": "WebServer EC2 instance type",
       "Type": "String",
@@ -348,7 +368,7 @@
         "HVMG2": "NOT_SUPPORTED"
       },
       "us-east-1": {
-        "HVM64": "ami-032930428bf1abbff",
+        "HVM64": "ami-053b0d53c279acc90",
         "HVMG2": "ami-0aeb704d503081ea6"
       },
       "us-east-2": {
@@ -382,6 +402,9 @@
       "Type": "AWS::EC2::Subnet",
       "Properties": {
         "VpcId": { "Ref": "TinkerVPC" },
+        "AvailabilityZone": {
+          "Fn::Sub": "${AWS::Region}a"
+        },
         "CidrBlock": "10.0.0.0/24",
         "Tags": [
           { "Key": "Application", "Value": { "Ref": "AWS::StackId" } },
@@ -429,7 +452,7 @@
       }
     },
 
-    "SubnetRouteTableAssociation": {
+    "TinkerAdminSubnetRouteTableAssociation": {
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
         "SubnetId": { "Ref": "TinkerAdminSubnet" },
@@ -740,7 +763,7 @@
                 "sudo apt update\n",
                 "curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -\n",
                 "sudo apt install nodejs -y\n",
-                "cd home/ubuntu && sudo git clone https://github.com/Nodel-Recall/tinker-admin-app.git\n",
+                "cd home/ubuntu && sudo git clone --branch proto/https https://github.com/Nodel-Recall/tinker-admin-app.git\n",
                 "sudo git clone https://github.com/Nodel-Recall/tinker-cli.git\n",
                 "cd tinker-admin-app && sudo npm install -y\n",
 
@@ -764,6 +787,317 @@
           }
         }
       }
+    },
+
+    "TinkerALB": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "TinkerALB",
+        "Scheme": "internet-facing",
+        "Type": "application",
+        "Subnets": [
+          {
+            "Ref": "TinkerAdminSubnet"
+          },
+          {
+            "Ref": "TinkerEmptySubnet"
+          }
+        ],
+        "SecurityGroups": [
+          {
+            "Ref": "TinkerALBSecurityGroup"
+          }
+        ],
+        "IpAddressType": "ipv4"
+      },
+      "DependsOn": ["TinkerEmptySubnet", "TinkerALBSecurityGroup"]
+    },
+
+    "TinkerALBListenerAdminNGINX": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": {
+          "Ref": "TinkerALB"
+        },
+        "Port": 443,
+        "Protocol": "HTTPS",
+        "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+        "Certificates": [
+          {
+            "CertificateArn": {
+              "Ref": "TinkerSubdomainCert"
+            }
+          }
+        ],
+        "DefaultActions": [
+          {
+            "FixedResponseConfig": {
+              "MessageBody": "Please specify a project or the admin subdomain",
+              "StatusCode": "400",
+              "ContentType": "text/plain"
+            },
+            "Order": 1,
+            "Type": "fixed-response"
+          }
+        ]
+      },
+      "DependsOn": ["TinkerALB", "TinkerSubdomainCert"]
+    },
+
+    "TinkerALBListenerAdminPostgREST": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": {
+          "Ref": "TinkerALB"
+        },
+        "Port": 3000,
+        "Protocol": "HTTPS",
+        "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+        "Certificates": [
+          {
+            "CertificateArn": {
+              "Ref": "TinkerSubdomainCert"
+            }
+          }
+        ],
+        "DefaultActions": [
+          {
+            "FixedResponseConfig": {
+              "MessageBody": "Please specify a project or the admin subdomain",
+              "StatusCode": "400",
+              "ContentType": "text/plain"
+            },
+            "Order": 1,
+            "Type": "fixed-response"
+          }
+        ]
+      },
+      "DependsOn": ["TinkerALB", "TinkerSubdomainCert"]
+    },
+
+    "TinkerALBListenerRuleAdminNGINX": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "Priority": "1",
+        "ListenerArn": {
+          "Ref": "TinkerALBListenerAdminNGINX"
+        },
+        "Conditions": [
+          {
+            "Field": "host-header",
+            "Values": [{ "Ref": "AdminSubdomain" }]
+          }
+        ],
+        "Actions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "TinkerTargetGroupAdminNGINX"
+            },
+            "Order": 1,
+            "ForwardConfig": {
+              "TargetGroups": [
+                {
+                  "TargetGroupArn": {
+                    "Ref": "TinkerTargetGroupAdminNGINX"
+                  },
+                  "Weight": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "DependsOn": ["TinkerALBListenerAdminNGINX"]
+    },
+
+    "TinkerALBListenerRuleAdminPostgREST": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "Priority": "1",
+        "ListenerArn": {
+          "Ref": "TinkerALBListenerAdminPostgREST"
+        },
+        "Conditions": [
+          {
+            "Field": "host-header",
+            "Values": [{ "Ref": "AdminSubdomain" }]
+          }
+        ],
+        "Actions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "TinkerTargetGroupAdminPostgREST"
+            },
+            "Order": 1,
+            "ForwardConfig": {
+              "TargetGroups": [
+                {
+                  "TargetGroupArn": {
+                    "Ref": "TinkerTargetGroupAdminPostgREST"
+                  },
+                  "Weight": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "DependsOn": ["TinkerALBListenerAdminPostgREST"]
+    },
+
+    "TinkerALBSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Tinker ALB Security Group",
+        "GroupName": "TinkerALBSecurityGroup",
+        "VpcId": { "Ref": "TinkerVPC" },
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 80,
+            "IpProtocol": "tcp",
+            "ToPort": 80
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 22,
+            "IpProtocol": "tcp",
+            "ToPort": 22
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "PostgREST",
+            "FromPort": 3000,
+            "IpProtocol": "tcp",
+            "ToPort": 3000
+          },
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": 443,
+            "IpProtocol": "tcp",
+            "ToPort": 443
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "IpProtocol": "-1"
+          }
+        ]
+      },
+      "DependsOn": ["TinkerVPC"]
+    },
+
+    "TinkerTargetGroupAdminNGINX": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Port": 80,
+        "Protocol": "HTTP",
+        "TargetType": "instance",
+        "VpcId": { "Ref": "TinkerVPC" },
+        "Name": "TinkerTargetGroupAdminNGINX",
+        "HealthCheckEnabled": true,
+        "Targets": [
+          {
+            "Id": {
+              "Ref": "TinkerAdminWebServerDB"
+            },
+            "Port": 80
+          }
+        ]
+      },
+      "DependsOn": ["TinkerVPC", "TinkerAdminWebServerDB"]
+    },
+
+    "TinkerTargetGroupAdminPostgREST": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Port": 3000,
+        "Protocol": "HTTP",
+        "TargetType": "instance",
+        "VpcId": { "Ref": "TinkerVPC" },
+        "Name": "TinkerTargetGroupAdminPostgREST",
+        "HealthCheckEnabled": true,
+        "Targets": [
+          {
+            "Id": {
+              "Ref": "TinkerAdminWebServerDB"
+            },
+            "Port": 3000
+          }
+        ]
+      },
+      "DependsOn": ["TinkerVPC", "TinkerAdminWebServerDB"]
+    },
+
+    "TinkerEmptySubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "TinkerVPC" },
+        "AvailabilityZone": {
+          "Fn::Sub": "${AWS::Region}c"
+        },
+        "CidrBlock": "10.0.1.0/24",
+        "Tags": [
+          { "Key": "Application", "Value": { "Ref": "AWS::StackId" } },
+          { "Key": "Name", "Value": "TinkerEmptySubnet" }
+        ]
+      },
+      "DependsOn": ["TinkerVPC"]
+    },
+
+    "TinkerEmptySubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": { "Ref": "TinkerEmptySubnet" },
+        "RouteTableId": { "Ref": "TinkerAdminRouteTable" }
+      },
+      "DependsOn": ["TinkerAdminRouteTable"]
+    },
+
+    "TinkerRecordSetAdmin": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "Name": {
+          "Ref": "AdminSubdomain"
+        },
+        "HostedZoneId": {
+          "Ref": "HostedZoneId"
+        },
+        "AliasTarget": {
+          "HostedZoneId": {
+            "Fn::GetAtt": ["TinkerALB", "CanonicalHostedZoneID"]
+          },
+          "DNSName": {
+            "Fn::GetAtt": ["TinkerALB", "DNSName"]
+          }
+        },
+        "Type": "A"
+      },
+      "DependsOn": ["TinkerALB"]
+    },
+
+    "TinkerSubdomainCert": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": {
+          "Ref": "WildcardSubdomainName"
+        },
+        "DomainValidationOptions": [
+          {
+            "DomainName": {
+              "Ref": "WildcardSubdomainName"
+            },
+            "HostedZoneId": {
+              "Ref": "HostedZoneId"
+            }
+          }
+        ],
+        "ValidationMethod": "DNS"
+      },
+      "DependsOn": ["TinkerRecordSetAdmin"]
     }
   },
 

@@ -25,7 +25,7 @@ const getAllProjects = async () => {
     );
     return response.map((project) => project.name);
   } catch (error) {
-    console.error("Could not retrieve all projects.");
+    console.error(chalk.red("Could not retrieve all projects."));
   }
 }; ///returns array of stackNames
 
@@ -87,8 +87,6 @@ const waitStack = async (cloudFormation, stackName, spinner) => {
       waiterParams,
       describeStacksCommandInput
     );
-
-    spinner.succeed(tinkerPurple("Tinker-Admin has been deleted."));
   } catch (error) {
     spinner.fail("Failed.");
 
@@ -100,6 +98,15 @@ const waitStack = async (cloudFormation, stackName, spinner) => {
   }
 };
 
-await deleteAllProjects(cloudFormation);
-await deleteStack(cloudFormation, stackParams, spinner);
-await waitStack(cloudFormation, stackParams, spinner);
+async function destroyTinker(cloudFormation, stackParams, spinner) {
+  try {
+    // await deleteAllProjects(cloudFormation);
+    await deleteStack(cloudFormation, stackParams, spinner);
+    await waitStack(cloudFormation, stackParams, spinner);
+    spinner.succeed(tinkerPurple("Tinker has been deleted."));
+  } catch (error) {
+    console.error(chalk.red("Error: Could not destroy Tinker."));
+  }
+}
+
+destroyTinker(cloudFormation, stackParams, spinner);

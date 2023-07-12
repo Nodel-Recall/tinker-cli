@@ -8,8 +8,8 @@ import {
 } from "@aws-sdk/client-cloudformation";
 import fs from "fs";
 import util from "util";
-import readline from "readline";
 import { generateJWT } from "../utils/generateJWT.js";
+import { getProjectName } from "../utils/get_project_name.js";
 import "dotenv/config";
 
 const spinner = ora({
@@ -19,13 +19,8 @@ const spinner = ora({
 
 const tinkerPurple = chalk.rgb(99, 102, 241);
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
 // const stackName = process.argv[2];
-let stackName;
+const stackName = await getProjectName();
 const templatePath = "./tinker_create_project_template.json";
 const encoding = "utf8";
 
@@ -40,53 +35,6 @@ const readTemplateFromFile = async (templatePath, encoding) => {
     process.exit(1);
   }
 };
-
-const validProjectName = (projectName) => {
-  if (whiteSpace(projectName)) return false;
-  const match = projectName.match(/^[a-zA-Z][a-zA-Z0-9-]+$/g);
-  if (!match) {
-    return false;
-  }
-  return match[0] === projectName;
-};
-
-const whiteSpace = (projectName) => {
-  const trimmed = projectName.replace(" ", "");
-  if (trimmed === projectName) {
-    return false;
-  }
-  return true;
-};
-
-const promisifyProjectNameQuestion = () => {
-  return new Promise((resolve, reject) => {
-    rl.question(
-      tinkerPurple(
-        "Enter Project Name (alphanumeric chars and hyphens only): "
-      ),
-      (answer) => {
-        if (!validProjectName(answer)) {
-          reject(
-            chalk.red(
-              "Invalid Name. Alphanumeric chars and hyphens only. Name must start with an alphanumeric char."
-            )
-          );
-        }
-        resolve(answer);
-      }
-    );
-  });
-};
-
-const getProjectName = async () => {
-  try {
-    return await promisifyProjectNameQuestion();
-  } catch (error) {
-    console.log("error getting project name input", error);
-  }
-};
-
-stackName = await getProjectName();
 
 const promisifyCreateStack = async (cloudFormation, stackParams) => {
   return new Promise((resolve, reject) => {

@@ -5,8 +5,9 @@ import {
 import chalk from "chalk";
 import ora from "ora";
 import axios from "axios";
-import { generateJWT } from "../utils/generateJWT.js";
 import "dotenv/config";
+import { generateJWT } from "../utils/generateJWT.js";
+import { getProjectName } from "../utils/get_project_name.js";
 
 const spinner = ora({
   text: "Deleting project...This could take a few minutes.",
@@ -16,7 +17,7 @@ const spinner = ora({
 const tinkerPurple = chalk.rgb(99, 102, 241);
 
 const cloudFormation = new CloudFormation();
-const stackName = process.argv[2]; //placeholder til we see what the tinker CL interaction looks like
+const stackName = await getProjectName(); //placeholder til we see what the tinker CL interaction looks like
 const stackParams = { StackName: stackName };
 
 async function deleteProjectFromAdminTable(stackName) {
@@ -28,7 +29,7 @@ async function deleteProjectFromAdminTable(stackName) {
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch (error) {
-    console.log("Failed to delete project from admin projects table");
+    console.error("Failed to delete project from admin projects table", error);
   }
 }
 
@@ -49,7 +50,7 @@ async function deleteStack(cloudFormation, stackParams, spinner) {
     await promisifyDeleteStack(cloudFormation, stackParams);
   } catch (error) {
     spinner.fail("Failed!");
-    console.error(chalk.red("Error Deleting Project"));
+    console.error(chalk.red("Error Deleting Project"), error);
     process.exit(1);
   }
 }
@@ -69,8 +70,6 @@ const waitStack = async (cloudFormation, stackName, spinner) => {
       waiterParams,
       describeStacksCommandInput
     );
-
-    spinner.succeed(tinkerPurple("Project has been deleted"));
   } catch (error) {
     spinner.fail("Failed.");
 
@@ -85,7 +84,10 @@ const deleteProject = async (cloudFormation, stackParams, spinner) => {
     await deleteStack(cloudFormation, stackParams, spinner);
     // await deleteProjectFromAdminTable(stackName)
     await waitStack(cloudFormation, stackParams, spinner);
-  } catch (e) {}
+    spinner.succeed(tinkerPurple("Project has been deleted"));
+  } catch (e) {
+    console.error(chalk.red("Project could not be deleted:"), error);
+  }
 };
 
 await deleteProject(cloudFormation, stackParams, spinner);

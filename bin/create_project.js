@@ -9,7 +9,7 @@ import {
 import fs from "fs";
 import util from "util";
 import readline from "readline";
-import * as jose from "jose";
+import { generateJWT } from "../utils/generateJWT.js";
 import "dotenv/config";
 
 const spinner = ora({
@@ -23,19 +23,6 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-
-async function generateJWT(jwtSecret) {
-  try {
-    const secret = new TextEncoder().encode(jwtSecret);
-    const alg = "HS256";
-    const jwt = await new jose.SignJWT({ role: "admin" })
-      .setProtectedHeader({ alg })
-      .sign(secret);
-    return jwt;
-  } catch (error) {
-    console.log("Could not generate JWT.");
-  }
-}
 
 // const stackName = process.argv[2];
 let stackName;
@@ -95,7 +82,7 @@ const getProjectName = async () => {
   try {
     return await promisifyProjectNameQuestion();
   } catch (error) {
-    console.log("error getting projuct name input", error);
+    console.log("error getting project name input", error);
   }
 };
 
@@ -181,12 +168,11 @@ const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
 
 const updateProjectsTable = async () => {
   try {
-
+    const jwt = generateJWT(process.env.SECRET);
     await axios.post(
-      `https://admin.${process.env.DOMAIN_NAME}:3000`,
-      { name: stackName, subdomain: `${stackName}.${process.env.DOMAIN_NAME}` },
-      { Authorization: `Bearer ${jwt}` }
-
+      `https://admin.${process.env.DOMAIN_NAME}:3000/projects`,
+      { name: stackName, domain: process.env.DOMAIN_NAME },
+      { headers: { Authorization: `Bearer ${jwt}` } }
     );
   } catch (error) {
     console.error(error);
@@ -220,8 +206,8 @@ export const createProject = async (stackName) => {
 };
 
 await createProject(stackName);
-updateProjectsTable();
 
 console.log();
 console.log(tinkerPurple("Your project was created successfully!"));
+
 process.exit(0);

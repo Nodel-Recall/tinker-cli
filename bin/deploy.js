@@ -13,6 +13,7 @@ import fs from "fs";
 import util from "util";
 import readline from "readline";
 import cryptoRandomString from "crypto-random-string";
+import { createTinkerKeys } from "../utils/create_tinker_keys.js";
 
 const spinner = ora({
   text: "Deploying to AWS... This may take up to 15 minutes!",
@@ -146,6 +147,7 @@ const createStack = async (cloudFormation, stackParams, spinner) => {
 let template = await readTemplateFromFile(templatePath, encoding);
 let region = await askRegion();
 let domain = await askDomain();
+await createTinkerKeys(region);
 
 let secret = cryptoRandomString({
   length: minSecretLength,

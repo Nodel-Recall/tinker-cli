@@ -5,7 +5,7 @@ import {
 import chalk from "chalk";
 import ora from "ora";
 import axios from "axios";
-import * as jose from "jose";
+import { generateJWT } from "../utils/generateJWT.js";
 import "dotenv/config";
 
 const spinner = ora({
@@ -14,19 +14,6 @@ const spinner = ora({
 });
 
 const tinkerPurple = chalk.rgb(99, 102, 241);
-
-async function generateJWT(jwtSecret) {
-  try {
-    const secret = new TextEncoder().encode(jwtSecret);
-    const alg = "HS256";
-    const jwt = await new jose.SignJWT({ role: "admin" })
-      .setProtectedHeader({ alg })
-      .sign(secret);
-    return jwt;
-  } catch (error) {
-    console.log("Could not generate JWT.");
-  }
-}
 
 const cloudFormation = new CloudFormation();
 const stackName = process.argv[2]; //placeholder til we see what the tinker CL interaction looks like
@@ -92,5 +79,13 @@ const waitStack = async (cloudFormation, stackName, spinner) => {
   }
 };
 
-await deleteStack(cloudFormation, stackParams, spinner);
-await waitStack(cloudFormation, stackParams, spinner);
+const deleteProject = async (cloudFormation, stackParams, spinner) => {
+  const stackName = stackParams.StackName;
+  try {
+    await deleteStack(cloudFormation, stackParams, spinner);
+    // await deleteProjectFromAdminTable(stackName)
+    await waitStack(cloudFormation, stackParams, spinner);
+  } catch (e) {}
+};
+
+await deleteProject(cloudFormation, stackParams, spinner);

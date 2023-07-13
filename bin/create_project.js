@@ -12,6 +12,9 @@ import { generateJWT } from "../utils/generateJWT.js";
 import { getProjectName } from "../utils/get_project_name.js";
 import "dotenv/config";
 
+const ruleNumberOffset = 1; // Rule for admin is 1, so projects must be offset
+const maxRuleNumber = 50000;
+
 const spinner = ora({
   text: "Deploying to AWS... This may take up to 15 minutes!",
   color: "cyan",
@@ -99,38 +102,66 @@ const promisifyDescribeStack = async (cloudFormation, stackParams) => {
   });
 };
 
-const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
+const getStackOutputs = async (cloudFormation, stackParams) => {
   try {
     let data = await promisifyDescribeStack(cloudFormation, stackParams);
     const outputs = data.Stacks[0].Outputs;
 
-    const url = outputs.find((o) => o.OutputKey === "URL").OutputValue;
-    return url;
+    return outputs;
   } catch (error) {
-    spinner.fail("Deployment failed!");
-
-    console.log("Error returning the IP Address of the Project.");
+    console.log("Error retrieving stack outputs");
     process.exit(1);
   }
 };
 
-const updateProjectsTable = async () => {
+const getRegion = (stackOutputs) => {
+  return stackOutputs.find((o) => o.OutputKey === "TinkerRegion").OutputValue;
+};
+const getAdminDomain = (stackOutputs) => {
+  return stackOutputs.find((o) => o.OutputKey === "TinkerAdminDomain")
+    .OutputValue;
+};
+
+const getDomain = async (stackOutputs) => {
+  return stackOutputs.find((o) => o.OutputKey === "TinkerDomainName")
+    .OutputValue;
+};
+
+const updateProjectsTable = async (jwt, projectDomain) => {
   try {
-    const jwt = generateJWT(process.env.SECRET);
     await axios.post(
-      `https://admin.${process.env.DOMAIN_NAME}:3000/projects`,
-      { name: stackName, domain: process.env.DOMAIN_NAME },
+      `https://${adminDomain}:3000/projects`,
+      { name: stackName, domain: projectDomain },
       { headers: { Authorization: `Bearer ${jwt}` } }
     );
   } catch (error) {
     console.error(error);
     console.log("Error updating projects");
+    process.exit(1);
   }
 };
 
-export const createProject = async (stackName) => {
+const getNextProjectId = async (jwt, adminDomain) => {
+  try {
+    const response = await axios.post(
+      `https://${adminDomain}:3000/rpc/get_next_project_id`,
+      null,
+      {
+        headers: { Authorization: `Bearer ${jwt}` },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    console.log("Error getting next project Id");
+    process.exit(1);
+  }
+};
+
+export const createProject = async (region, stackName, ProjectId) => {
   const template = await readTemplateFromFile(templatePath, encoding);
-  const cloudFormation = new CloudFormation();
+  const cloudFormation = new CloudFormation({ region });
   const stackParams = {
     StackName: stackName,
     TemplateBody: template,
@@ -139,21 +170,38 @@ export const createProject = async (stackName) => {
         ParameterKey: "ProjectName",
         ParameterValue: stackName,
       },
+      {
+        ParameterKey: "RulePriority",
+        ParameterValue: (ProjectId + ruleNumberOffset) % maxRuleNumber,
+      },
     ],
   };
 
   try {
     await createStack(cloudFormation, stackParams, spinner);
     await waitStack(cloudFormation, stackName, spinner);
-    const IPAddress = await retrieveStackOutputs(cloudFormation, stackParams);
-    //send IPaddress with stackName to projects backend
-    return IPAddress;
   } catch (e) {
     console.log("Failed attempting to retrieve Stack output.");
   }
 };
 
-await createProject(stackName);
+const tinkerAdminStack = "TinkerAdminStack";
+
+const cloudFormation = new CloudFormation();
+const jwt = await generateJWT(process.env.SECRET);
+
+let stackOutputs = await getStackOutputs(cloudFormation, {
+  StackName: tinkerAdminStack,
+});
+
+let adminDomain = await getAdminDomain(stackOutputs);
+let domain = await getDomain(stackOutputs);
+let region = await getRegion(stackOutputs);
+
+const ProjectId = Number(await getNextProjectId(jwt, adminDomain));
+
+await createProject(region, stackName, ProjectId);
+await updateProjectsTable(jwt, `${stackName}.${domain}`);
 
 console.log();
 console.log(tinkerPurple("Your project was created successfully!"));

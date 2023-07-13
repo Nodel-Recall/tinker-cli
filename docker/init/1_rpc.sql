@@ -164,3 +164,12 @@ begin
 end;
 $$
 language plpgsql;
+
+CREATE OR REPLACE FUNCTION get_next_project_id()
+  RETURNS bigint AS
+$$
+BEGIN
+  RETURN nextval('projects_id_seq');
+END;
+$$
+LANGUAGE plpgsql;

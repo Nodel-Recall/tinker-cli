@@ -15,24 +15,24 @@
       "Description": "For PostgREST to mint and authenticate JWTs. Also required for user sign up into the Admin app."
     },
 
+    "Domain": {
+      "Type": "String",
+      "Description": "Name of the domain e.g. tinker.com"
+    },
+
     "WildcardSubdomainName": {
       "Type": "String",
       "Description": "Name of the subdomain e.g. *.tinker.com"
     },
 
-    "AdminSubdomain": {
+    "AdminDomain": {
       "Type": "String",
       "Description": "Name of the admin subdomain e.g. admin.tinker.com"
     },
 
-    "HostedZoneName": {
-      "Type": "String",
-      "Description": "Name of the hosted zone (domain with a trailing dot). E.g. tinker.com."
-    },
-
     "HostedZoneId": {
       "Type": "AWS::Route53::HostedZone::Id",
-      "Description": "ID of the hosted zone associated with the admin subdomain"
+      "Description": "ID of the hosted zone associated with the admin and project subdomains"
     },
 
     "InstanceType": {
@@ -764,13 +764,13 @@
                 "curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -\n",
                 "sudo apt install nodejs -y\n",
                 "cd home/ubuntu && sudo git clone https://github.com/Nodel-Recall/tinker-admin-app.git\n",
-                "sudo git clone https://github.com/Nodel-Recall/tinker-cli.git\n",
+                "sudo git clone -b dev/create-project https://github.com/Nodel-Recall/tinker-cli.git\n",
                 "cd tinker-admin-app && sudo npm install -y\n",
 
                 "sudo chown ubuntu:ubuntu .env\n",
                 "sudo echo -e \"\nREACT_APP_ADMIN_URL=",
                 {
-                  "Ref": "AdminSubdomain"
+                  "Ref": "AdminDomain"
                 },
                 "\" >> .env\n",
                 "sudo npm run build\n",
@@ -817,7 +817,7 @@
       "DependsOn": ["TinkerEmptySubnet", "TinkerALBSecurityGroup"]
     },
 
-    "TinkerALBListenerAdminNGINX": {
+    "TinkerALBListenerNGINX": {
       "Type": "AWS::ElasticLoadBalancingV2::Listener",
       "Properties": {
         "LoadBalancerArn": {
@@ -848,7 +848,7 @@
       "DependsOn": ["TinkerALB", "TinkerSubdomainCert"]
     },
 
-    "TinkerALBListenerAdminPostgREST": {
+    "TinkerALBListenerPostgREST": {
       "Type": "AWS::ElasticLoadBalancingV2::Listener",
       "Properties": {
         "LoadBalancerArn": {
@@ -884,12 +884,12 @@
       "Properties": {
         "Priority": "1",
         "ListenerArn": {
-          "Ref": "TinkerALBListenerAdminNGINX"
+          "Ref": "TinkerALBListenerNGINX"
         },
         "Conditions": [
           {
             "Field": "host-header",
-            "Values": [{ "Ref": "AdminSubdomain" }]
+            "Values": [{ "Ref": "AdminDomain" }]
           }
         ],
         "Actions": [
@@ -912,7 +912,7 @@
           }
         ]
       },
-      "DependsOn": ["TinkerALBListenerAdminNGINX"]
+      "DependsOn": ["TinkerALBListenerNGINX"]
     },
 
     "TinkerALBListenerRuleAdminPostgREST": {
@@ -920,12 +920,12 @@
       "Properties": {
         "Priority": "1",
         "ListenerArn": {
-          "Ref": "TinkerALBListenerAdminPostgREST"
+          "Ref": "TinkerALBListenerPostgREST"
         },
         "Conditions": [
           {
             "Field": "host-header",
-            "Values": [{ "Ref": "AdminSubdomain" }]
+            "Values": [{ "Ref": "AdminDomain" }]
           }
         ],
         "Actions": [
@@ -948,7 +948,7 @@
           }
         ]
       },
-      "DependsOn": ["TinkerALBListenerAdminPostgREST"]
+      "DependsOn": ["TinkerALBListenerPostgREST"]
     },
 
     "TinkerALBSecurityGroup": {
@@ -1065,7 +1065,7 @@
       "Type": "AWS::Route53::RecordSet",
       "Properties": {
         "Name": {
-          "Ref": "AdminSubdomain"
+          "Ref": "AdminDomain"
         },
         "HostedZoneId": {
           "Ref": "HostedZoneId"
@@ -1106,6 +1106,13 @@
   },
 
   "Outputs": {
+    "TinkerRegion": {
+      "Description": "Region for Tinker projects",
+      "Value": {
+        "Fn::Sub": "${AWS::Region}"
+      },
+      "Export": { "Name": "TinkerRegion" }
+    },
     "URL": {
       "Value": {
         "Fn::Join": [
@@ -1120,10 +1127,45 @@
       "Value": { "Ref": "TinkerAdminSubnet" },
       "Export": { "Name": "ProjectSubnetId" }
     },
+    "TinkerVpcId": {
+      "Description": "Tinker VPC Id",
+      "Value": { "Ref": "TinkerVPC" },
+      "Export": { "Name": "TinkerVpcId" }
+    },
     "SecurityGroupId": {
       "Description": "Security group for EC2",
       "Value": { "Ref": "TinkerAdminWebServerDBSecurityGroup" },
       "Export": { "Name": "SecurityGroupId" }
+    },
+    "TinkerALBListenerPostgRESTArn": {
+      "Description": "Tinker ALB Listener for PostgREST traffic",
+      "Value": { "Ref": "TinkerALBListenerPostgREST" },
+      "Export": { "Name": "TinkerALBListenerPostgRESTArn" }
+    },
+    "TinkerDomainName": {
+      "Description": "Domain name for Tinker projects",
+      "Value": { "Ref": "Domain" },
+      "Export": { "Name": "TinkerDomainName" }
+    },
+    "TinkerAdminDomain": {
+      "Description": "Admin subdomain name",
+      "Value": { "Ref": "AdminDomain" },
+      "Export": { "Name": "TinkerSubdomainName" }
+    },
+    "TinkerProjectsHostedZoneId": {
+      "Description": "Hosted Zone Id of Tinker project subdomains",
+      "Value": { "Ref": "HostedZoneId" },
+      "Export": { "Name": "TinkerProjectsHostedZoneId" }
+    },
+    "TinkerALBHostedZoneId": {
+      "Description": "Hosted Zone Id of the ALB",
+      "Value": { "Fn::GetAtt": ["TinkerALB", "CanonicalHostedZoneID"] },
+      "Export": { "Name": "TinkerALBHostedZoneId" }
+    },
+    "TinkerALBDNSName": {
+      "Description": "DNS name of the ALB",
+      "Value": { "Fn::GetAtt": ["TinkerALB", "DNSName"] },
+      "Export": { "Name": "TinkerALBDNSName" }
     }
   }
 }

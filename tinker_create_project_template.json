@@ -9,10 +9,16 @@
       "Default": "ProjectInstance",
       "Description": "Name for the CloudFormation stack"
     },
+
     "ProjectName": {
       "Type": "String",
       "Default": "ProjectInstance",
       "Description": "Name for the EC2 Instance"
+    },
+
+    "RulePriority": {
+      "Type": "String",
+      "Description": "Set the listener rule priority."
     },
 
     "InstanceType": {
@@ -367,6 +373,121 @@
   },
 
   "Resources": {
+    "TinkerRecordSetProject": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "Name": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "ProjectName"
+              },
+              ".",
+              {
+                "Fn::ImportValue": "TinkerDomainName"
+              }
+            ]
+          ]
+        },
+        "HostedZoneId": {
+          "Fn::ImportValue": "TinkerProjectsHostedZoneId"
+        },
+        "AliasTarget": {
+          "HostedZoneId": {
+            "Fn::ImportValue": "TinkerALBHostedZoneId"
+          },
+          "DNSName": {
+            "Fn::ImportValue": "TinkerALBDNSName"
+          }
+        },
+        "Type": "A"
+      }
+    },
+
+    "TinkerALBListenerRuleProjectPostgREST": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "Priority": "2",
+        "ListenerArn": {
+          "Fn::ImportValue": "TinkerALBListenerPostgRESTArn"
+        },
+        "Conditions": [
+          {
+            "Field": "host-header",
+            "Values": [
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "ProjectName"
+                    },
+                    ".",
+                    {
+                      "Fn::ImportValue": "TinkerDomainName"
+                    }
+                  ]
+                ]
+              }
+            ]
+          }
+        ],
+        "Actions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "TinkerTargetGroupProjectPostgREST"
+            },
+            "Order": 1,
+            "ForwardConfig": {
+              "TargetGroups": [
+                {
+                  "TargetGroupArn": {
+                    "Ref": "TinkerTargetGroupProjectPostgREST"
+                  },
+                  "Weight": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "DependsOn": ["TinkerTargetGroupProjectPostgREST"]
+    },
+
+    "TinkerTargetGroupProjectPostgREST": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Port": 3000,
+        "Protocol": "HTTP",
+        "TargetType": "instance",
+        "VpcId": { "Fn::ImportValue": "TinkerVpcId" },
+        "Name": {
+          "Fn::Join": [
+            "",
+            [
+              "TinkerTargetGroup",
+              {
+                "Ref": "ProjectName"
+              },
+              "PostgREST"
+            ]
+          ]
+        },
+        "HealthCheckEnabled": true,
+        "Targets": [
+          {
+            "Id": {
+              "Ref": "ProjectInstance"
+            },
+            "Port": 3000
+          }
+        ]
+      },
+      "DependsOn": ["ProjectInstance"]
+    },
+
     "ProjectInstance": {
       "Type": "AWS::EC2::Instance",
       "CreationPolicy": {
@@ -536,7 +657,7 @@
                 "mkdir -p ~/.docker/project-plugins/\n",
                 "curl -SL https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-linux-x86_64 -o ~/.docker/project-plugins/docker-compose\n",
                 "chmod +x ~/.docker/project-plugins/docker-compose\n",
-                "sudo -u ubuntu sh -c 'cd ~ && sudo git clone https://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@github.com/Nodel-Recall/tinker-admin-app.git && cd tinker-admin-app/src/services/docker && sudo docker compose up -d'\n"
+                "sudo -u ubuntu sh -c 'cd ~ && sudo git clone https://github.com/Nodel-Recall/tinker-cli.git && cd tinker-cli/docker && sudo docker compose up -d'\n"
               ]
             ]
           }

@@ -14,8 +14,10 @@ CREATE SCHEMA auth;
 
 -- new projects table where the secret is the same as the admin app db
 CREATE TABLE projects (
-    name      VARCHAR(128)  PRIMARY KEY CONSTRAINT only_alphanumeric CHECK (name ~ '^[a-zA-Z][a-zA-Z0-9-]+$'),
-    ip        INET         NOT NULL UNIQUE
+    PRIMARY KEY (id),
+    id     serial,
+    name   VARCHAR(128) CONSTRAINT only_alphanumeric CHECK (name ~ '^[a-zA-Z][a-zA-Z0-9-]+$'),
+    domain VARCHAR(255) NOT NULL UNIQUE
 );
 
 --private users table for Tinker backend
@@ -127,3 +129,4 @@ $$ language plpgsql security definer;
 
 -- grant anon role access to login function
 grant execute on function login(text,text) to anon;
+

@@ -168,12 +168,11 @@ const createStack = async (cloudFormation, stackParams, spinner) => {
 
 let template = await readTemplateFromFile(templatePath, encoding);
 let region = await askRegion();
-let domain = await askDomain();
+let Domain = await askDomain();
 let HostedZoneId = await askHostedZoneId();
 
-let WildcardSubdomainName = `*.${domain}`;
-let AdminSubdomain = `admin.${domain}`;
-let HostedZoneName = domain;
+let WildcardSubdomainName = `*.${Domain}`;
+let AdminDomain = `admin.${Domain}`;
 
 await createTinkerKeys(region);
 
@@ -197,12 +196,12 @@ const stackParams = {
       ParameterValue: WildcardSubdomainName,
     },
     {
-      ParameterKey: "AdminSubdomain",
-      ParameterValue: AdminSubdomain,
+      ParameterKey: "Domain",
+      ParameterValue: Domain,
     },
     {
-      ParameterKey: "HostedZoneName",
-      ParameterValue: HostedZoneName,
+      ParameterKey: "AdminDomain",
+      ParameterValue: AdminDomain,
     },
     {
       ParameterKey: "HostedZoneId",
@@ -252,7 +251,7 @@ const appendFileAsync = util.promisify(fs.appendFile);
 
 const writeDomainToFile = async () => {
   try {
-    await appendFileAsync(".env", `DOMAIN_NAME=${domain}`);
+    await appendFileAsync(".env", `DOMAIN_NAME=${Domain}`);
   } catch (error) {
     console.error(error);
     console.log("Error saving configuration to file.");
@@ -299,7 +298,7 @@ let adminAppURL = await retrieveStackOutputs(cloudFormation, {
 await updateConfigurationFiles();
 
 console.log();
-console.log(tinkerPurple(`Your admin portal: ${chalk.green(`https://${AdminSubdomain}`)}`));
+console.log(tinkerPurple(`Your admin portal: ${chalk.green(`https://${AdminDomain}`)}`));
 console.log(
   tinkerPurple(`Your secret to create accounts: ${chalk.green(secret)}`)
 );

@@ -12,6 +12,9 @@ import { generateJWT } from "../utils/generateJWT.js";
 import { getProjectName } from "../utils/get_project_name.js";
 import "dotenv/config";
 
+const ruleNumberOffset = 1; // Rule for admin is 1, so projects must be offset
+const maxRuleNumber = 50000;
+
 const spinner = ora({
   text: "Deploying to AWS... This may take up to 15 minutes!",
   color: "cyan",
@@ -112,8 +115,7 @@ const getStackOutputs = async (cloudFormation, stackParams) => {
 };
 
 const getRegion = (stackOutputs) => {
-  return stackOutputs.find((o) => o.OutputKey === "TinkerRegion")
-    .OutputValue;
+  return stackOutputs.find((o) => o.OutputKey === "TinkerRegion").OutputValue;
 };
 const getAdminDomain = (stackOutputs) => {
   return stackOutputs.find((o) => o.OutputKey === "TinkerAdminDomain")
@@ -128,7 +130,7 @@ const getDomain = async (stackOutputs) => {
 const updateProjectsTable = async (jwt, projectDomain) => {
   try {
     await axios.post(
-      `https://admin.${adminDomain}:3000/projects`,
+      `https://${adminDomain}:3000/projects`,
       { name: stackName, domain: projectDomain },
       { headers: { Authorization: `Bearer ${jwt}` } }
     );
@@ -141,9 +143,15 @@ const updateProjectsTable = async (jwt, projectDomain) => {
 
 const getNextProjectId = async (jwt, adminDomain) => {
   try {
-    await axios.post(`https://${adminDomain}:3000/rpc/next_project_id`, {
-      headers: { Authorization: `Bearer ${jwt}` },
-    });
+    const response = await axios.post(
+      `https://${adminDomain}:3000/rpc/get_next_project_id`,
+      null,
+      {
+        headers: { Authorization: `Bearer ${jwt}` },
+      }
+    );
+
+    return response.data;
   } catch (error) {
     console.error(error);
     console.log("Error getting next project Id");
@@ -164,7 +172,7 @@ export const createProject = async (region, stackName, ProjectId) => {
       },
       {
         ParameterKey: "RulePriority",
-        ParameterValue: ProjectId + 1, // Offset by 1 because Admin domain has priority 1
+        ParameterValue: (ProjectId + ruleNumberOffset) % maxRuleNumber,
       },
     ],
   };
@@ -180,17 +188,18 @@ export const createProject = async (region, stackName, ProjectId) => {
 const tinkerAdminStack = "TinkerAdminStack";
 
 const cloudFormation = new CloudFormation();
-const jwt = generateJWT(process.env.SECRET);
+const jwt = await generateJWT(process.env.SECRET);
 
 let stackOutputs = await getStackOutputs(cloudFormation, {
   StackName: tinkerAdminStack,
 });
 
-let adminDomain = getAdminDomain(stackOutputs);
-let domain = getDomain(stackOutputs);
-let region = getRegion(stackOutputs);
+let adminDomain = await getAdminDomain(stackOutputs);
+let domain = await getDomain(stackOutputs);
+let region = await getRegion(stackOutputs);
 
-const ProjectId = await getNextProjectId(jwt, adminDomain);
+const ProjectId = Number(await getNextProjectId(jwt, adminDomain));
+
 await createProject(region, stackName, ProjectId);
 await updateProjectsTable(jwt, `${stackName}.${domain}`);
 

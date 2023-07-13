@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
 
-  "Description": "Create a project EC2 within a Custom VPC",
+  "Description": "Create a project EC2 in the Tinker VPC",
 
   "Parameters": {
     "StackName": {
@@ -408,7 +408,9 @@
     "TinkerALBListenerRuleProjectPostgREST": {
       "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
       "Properties": {
-        "Priority": "2",
+        "Priority": {
+          "Ref": "RulePriority"
+        },
         "ListenerArn": {
           "Fn::ImportValue": "TinkerALBListenerPostgRESTArn"
         },
@@ -464,16 +466,7 @@
         "TargetType": "instance",
         "VpcId": { "Fn::ImportValue": "TinkerVpcId" },
         "Name": {
-          "Fn::Join": [
-            "",
-            [
-              "TinkerTargetGroup",
-              {
-                "Ref": "ProjectName"
-              },
-              "PostgREST"
-            ]
-          ]
+          "Ref": "ProjectName"
         },
         "HealthCheckEnabled": true,
         "Targets": [

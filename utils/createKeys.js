@@ -4,7 +4,7 @@ import {
   DescribeKeyPairsCommand,
 } from "@aws-sdk/client-ec2";
 
-export const createTinkerKeys = async (region) => {
+export const createKeys = async (region) => {
   const client = new EC2Client({ region });
   try {
     const keysExist = await doTinkerKeysExist(client);

@@ -13,7 +13,7 @@ import fs from "fs";
 import util from "util";
 import readline from "readline";
 import cryptoRandomString from "crypto-random-string";
-import { createTinkerKeys } from "../utils/createTinkerKeys.js";
+import { createKeys } from "../utils/createKeys.js";
 
 const spinner = ora({
   text: "Deploying to AWS... This may take up to 15 minutes!",
@@ -174,7 +174,7 @@ let HostedZoneId = await askHostedZoneId();
 let WildcardSubdomainName = `*.${Domain}`;
 let AdminDomain = `admin.${Domain}`;
 
-await createTinkerKeys(region);
+await createKeys(region);
 
 let secret = cryptoRandomString({
   length: minSecretLength,

@@ -24,7 +24,7 @@ const tinkerPurple = chalk.rgb(99, 102, 241);
 
 // const stackName = process.argv[2];
 const stackName = await getProjectName();
-const templatePath = "./tinker_create_project_template.json";
+const templatePath = process.env.DEVELOPMENT ? "./empty_template.json" : "./tinker_create_project_template.json";
 const encoding = "utf8";
 
 const readFileAsync = util.promisify(fs.readFile);

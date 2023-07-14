@@ -24,8 +24,7 @@ async function deleteProjectFromAdminTable(stackName) {
   try {
     const token = await generateJWT(process.env.SECRET);
     await axios.delete(
-      `https://admin.${process.env.DOMAIN_NAME}:3000/rpc/delete_project`,
-      { name: stackName },
+      `https://admin.${process.env.DOMAIN_NAME}:3000/projects?name=eq.${stackName}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch (error) {
@@ -82,7 +81,7 @@ const deleteProject = async (cloudFormation, stackParams, spinner) => {
   const stackName = stackParams.StackName;
   try {
     await deleteStack(cloudFormation, stackParams, spinner);
-    // await deleteProjectFromAdminTable(stackName)
+    await deleteProjectFromAdminTable(stackName)
     await waitStack(cloudFormation, stackParams, spinner);
     spinner.succeed(tinkerPurple("Project has been deleted"));
   } catch (e) {
@@ -91,3 +90,4 @@ const deleteProject = async (cloudFormation, stackParams, spinner) => {
 };
 
 await deleteProject(cloudFormation, stackParams, spinner);
+await deleteProjectFromAdminTable(stackName);

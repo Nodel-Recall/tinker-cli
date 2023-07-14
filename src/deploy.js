@@ -1,16 +1,12 @@
-#! /usr/bin/env node
-// TODO: Update to AWS SDK V3 with native promise API
-// TODO: Console log stack creation events
-
 import chalk from "chalk";
 import ora from "ora";
-
 import {
-  CloudFormation,
+  CloudFormationClient,
+  CreateStackCommand,
+  DescribeStacksCommand,
   waitUntilStackCreateComplete,
 } from "@aws-sdk/client-cloudformation";
-import fs from "fs";
-import util from "util";
+import fs from "fs/promises";
 import readline from "readline";
 import cryptoRandomString from "crypto-random-string";
 import { createKeys } from "../utils/createKeys.js";
@@ -44,7 +40,7 @@ const awsRegions = [
   "sa-east-1",
 ];
 
-const stackName = "TinkerAdminStack";
+const StackName = "TinkerAdminStack";
 const minSecretLength = 35;
 const templatePath = "./tinker_admin_template.json";
 const encoding = "utf8";
@@ -54,11 +50,9 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-const readFileAsync = util.promisify(fs.readFile);
-
 const readTemplateFromFile = async (templatePath, encoding) => {
   try {
-    let template = await readFileAsync(templatePath, encoding);
+    const template = await fs.readFile(templatePath, encoding);
     return template;
   } catch (error) {
     console.error(chalk.red("Error reading template file:"), error);
@@ -139,23 +133,11 @@ const askHostedZoneId = async () => {
   }
 };
 
-const promisifyCreateStack = async (cloudFormation, stackParams) => {
-  return new Promise((resolve, reject) => {
-    cloudFormation.createStack(stackParams, (error, data) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(data);
-      }
-    });
-  });
-};
-
 const createStack = async (cloudFormation, stackParams, spinner) => {
   try {
     spinner.start();
-
-    const data = await promisifyCreateStack(cloudFormation, stackParams);
+    const command = new CreateStackCommand(stackParams);
+    await cloudFormation.send(command);
   } catch (error) {
     setTimeout(() => {
       spinner.fail("Deployment failed!");
@@ -166,30 +148,59 @@ const createStack = async (cloudFormation, stackParams, spinner) => {
   }
 };
 
-let template = await readTemplateFromFile(templatePath, encoding);
-let region = await askRegion();
-let Domain = await askDomain();
-let HostedZoneId = await askHostedZoneId();
+const updateConfigurationFiles = async (Domain, secret) => {
+  try {
+    await fs.appendFile(".env", `DOMAIN_NAME=${Domain}`);
+    await fs.appendFile(".env", `\nSECRET=${secret}`);
+  } catch (error) {
+    console.error(error);
+    console.log("Error saving configuration to file.");
+  }
+};
+
+const waitStack = async (cloudFormation, stackName, spinner) => {
+  const waiterParams = {
+    client: cloudFormation,
+    maxWaitTime: 900,
+  };
+
+  const describeStacksCommandInput = {
+    StackName: stackName,
+  };
+
+  try {
+    await waitUntilStackCreateComplete(
+      waiterParams,
+      describeStacksCommandInput
+    );
+    spinner.succeed("Deployment complete!");
+  } catch (error) {
+    spinner.fail("Deployment failed!");
+    console.log("Timed out waiting for Stack to complete.");
+    process.exit(1);
+  }
+};
+
+const TemplateBody = await readTemplateFromFile(templatePath, encoding);
+const region = await askRegion();
+const Domain = await askDomain();
+const HostedZoneId = await askHostedZoneId();
 
 let WildcardSubdomainName = `*.${Domain}`;
 let AdminDomain = `admin.${Domain}`;
 
-await createKeys(region);
-
-let secret = cryptoRandomString({
+let Secret = cryptoRandomString({
   length: minSecretLength,
   type: "alphanumeric",
 });
 
-const cloudFormation = new CloudFormation({ region });
-
 const stackParams = {
-  StackName: stackName,
-  TemplateBody: template,
+  StackName,
+  TemplateBody,
   Parameters: [
     {
       ParameterKey: "Secret",
-      ParameterValue: secret,
+      ParameterValue: Secret,
     },
     {
       ParameterKey: "WildcardSubdomainName",
@@ -210,97 +221,18 @@ const stackParams = {
   ],
 };
 
-const waitStack = async (cloudFormation, stackName, spinner) => {
-  const waiterParams = {
-    client: cloudFormation,
-    maxWaitTime: 900,
-  };
-
-  const describeStacksCommandInput = {
-    StackName: stackName,
-  };
-
-  try {
-    await waitUntilStackCreateComplete(
-      waiterParams,
-      describeStacksCommandInput
-    );
-
-    spinner.succeed("Deployment complete!");
-  } catch (error) {
-    spinner.fail("Deployment failed!");
-
-    console.error(chalk.red("Error waiting for stack to complete"), error);
-    process.exit(1);
-  }
-};
-
-const promisifyDescribeStack = async (cloudFormation, stackParams) => {
-  return new Promise((resolve, reject) => {
-    cloudFormation.describeStacks(stackParams, (error, data) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(data);
-      }
-    });
-  });
-};
-
-const appendFileAsync = util.promisify(fs.appendFile);
-
-const writeDomainToFile = async () => {
-  try {
-    await appendFileAsync(".env", `DOMAIN_NAME=${Domain}`);
-  } catch (error) {
-    console.error(error);
-    console.log("Error saving configuration to file.");
-  }
-};
-
-const writeSecretToFile = async () => {
-  try {
-    await appendFileAsync(".env", `\nSECRET=${secret}`);
-  } catch (error) {
-    console.error(error);
-    console.log("Error saving configuration to file.");
-  }
-};
-
-const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
-  try {
-    let data = await promisifyDescribeStack(cloudFormation, stackParams);
-    const stack = data.Stacks[0];
-    const outputs = stack.Outputs;
-
-    const url = outputs.find((o) => o.OutputKey === "URL").OutputValue;
-    return url;
-  } catch (error) {
-    spinner.fail("Deployment failed!");
-
-    console.error(chalk.red("Error creating stack:"), error);
-    process.exit(1);
-  }
-};
-
-const updateConfigurationFiles = async () => {
-  await writeDomainToFile();
-  await writeSecretToFile();
-};
-
+const cloudFormation = new CloudFormationClient({ region });
+await createKeys(region);
 await createStack(cloudFormation, stackParams, spinner);
-await waitStack(cloudFormation, stackName, spinner);
-
-let adminAppURL = await retrieveStackOutputs(cloudFormation, {
-  StackName: stackName,
-});
-
-await updateConfigurationFiles();
+await waitStack(cloudFormation, StackName, spinner);
+await updateConfigurationFiles(Domain, Secret);
 
 console.log();
-console.log(tinkerPurple(`Your admin portal: ${chalk.green(`https://${AdminDomain}`)}`));
 console.log(
-  tinkerPurple(`Your secret to create accounts: ${chalk.green(secret)}`)
+  tinkerPurple(`Your admin portal: ${chalk.green(`https://${AdminDomain}`)}`)
+);
+console.log(
+  tinkerPurple(`Your secret to create accounts: ${chalk.green(Secret)}`)
 );
 
 process.exit(0);

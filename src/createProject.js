@@ -12,7 +12,10 @@ import { generateJWT } from "../utils/generateJWT.js";
 import { getProjectName } from "../utils/getProjectName.js";
 import "dotenv/config";
 
-const ruleNumberOffset = 1; // Rule for admin is 1, so projects must be offset
+// ALB listener rules must have unique priorities from 1-50000
+// Rule for admin is 1, so projects must be offset
+// Rule number is determined from projects' primary key
+const ruleNumberOffset = 1;
 const maxRuleNumber = 50000;
 
 const spinner = ora({
@@ -22,7 +25,6 @@ const spinner = ora({
 
 const tinkerPurple = chalk.rgb(99, 102, 241);
 
-// const stackName = process.argv[2];
 const stackName = await getProjectName();
 const templatePath = process.env.DEVELOPMENT ? "./empty_template.json" : "./tinker_create_project_template.json";
 const encoding = "utf8";
@@ -56,7 +58,7 @@ const createStack = async (cloudFormation, stackParams) => {
   try {
     spinner.start();
 
-    const data = await promisifyCreateStack(cloudFormation, stackParams);
+    await promisifyCreateStack(cloudFormation, stackParams);
   } catch (error) {
     setTimeout(() => {
       spinner.fail("Deployment failed!");

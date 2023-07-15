@@ -8,9 +8,15 @@ import {
 } from "@aws-sdk/client-cloudformation";
 import fs from "fs";
 import util from "util";
-import readline from "readline";
-import * as jose from "jose";
+import { generateJWT } from "../utils/generateJWT.js";
+import { getProjectName } from "../utils/getProjectName.js";
 import "dotenv/config";
+
+// ALB listener rules must have unique priorities from 1-50000
+// Rule for admin is 1, so projects must be offset
+// Rule number is determined from projects' primary key
+const ruleNumberOffset = 1;
+const maxRuleNumber = 50000;
 
 const spinner = ora({
   text: "Deploying to AWS... This may take up to 15 minutes!",
@@ -19,27 +25,8 @@ const spinner = ora({
 
 const tinkerPurple = chalk.rgb(99, 102, 241);
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-async function generateJWT(jwtSecret) {
-  try {
-    const secret = new TextEncoder().encode(jwtSecret);
-    const alg = "HS256";
-    const jwt = await new jose.SignJWT({ role: "admin" })
-      .setProtectedHeader({ alg })
-      .sign(secret);
-    return jwt;
-  } catch (error) {
-    console.log("Could not generate JWT.");
-  }
-}
-
-// const stackName = process.argv[2];
-let stackName;
-const templatePath = "./tinker_create_project_template.json";
+const stackName = await getProjectName();
+const templatePath = process.env.DEVELOPMENT ? "./empty_template.json" : "./tinker_create_project_template.json";
 const encoding = "utf8";
 
 const readFileAsync = util.promisify(fs.readFile);
@@ -53,53 +40,6 @@ const readTemplateFromFile = async (templatePath, encoding) => {
     process.exit(1);
   }
 };
-
-const validProjectName = (projectName) => {
-  if (whiteSpace(projectName)) return false;
-  const match = projectName.match(/^[a-zA-Z][a-zA-Z0-9-]+$/g);
-  if (!match) {
-    return false;
-  }
-  return match[0] === projectName;
-};
-
-const whiteSpace = (projectName) => {
-  const trimmed = projectName.replace(" ", "");
-  if (trimmed === projectName) {
-    return false;
-  }
-  return true;
-};
-
-const promisifyProjectNameQuestion = () => {
-  return new Promise((resolve, reject) => {
-    rl.question(
-      tinkerPurple(
-        "Enter Project Name (alphanumeric chars and hyphens only): "
-      ),
-      (answer) => {
-        if (!validProjectName(answer)) {
-          reject(
-            chalk.red(
-              "Invalid Name. Alphanumeric chars and hyphens only. Name must start with an alphanumeric char."
-            )
-          );
-        }
-        resolve(answer);
-      }
-    );
-  });
-};
-
-const getProjectName = async () => {
-  try {
-    return await promisifyProjectNameQuestion();
-  } catch (error) {
-    console.log("error getting projuct name input", error);
-  }
-};
-
-stackName = await getProjectName();
 
 const promisifyCreateStack = async (cloudFormation, stackParams) => {
   return new Promise((resolve, reject) => {
@@ -118,7 +58,7 @@ const createStack = async (cloudFormation, stackParams) => {
   try {
     spinner.start();
 
-    const data = await promisifyCreateStack(cloudFormation, stackParams);
+    await promisifyCreateStack(cloudFormation, stackParams);
   } catch (error) {
     setTimeout(() => {
       spinner.fail("Deployment failed!");
@@ -164,39 +104,66 @@ const promisifyDescribeStack = async (cloudFormation, stackParams) => {
   });
 };
 
-const retrieveStackOutputs = async (cloudFormation, stackParams, spinner) => {
+const getStackOutputs = async (cloudFormation, stackParams) => {
   try {
     let data = await promisifyDescribeStack(cloudFormation, stackParams);
     const outputs = data.Stacks[0].Outputs;
 
-    const url = outputs.find((o) => o.OutputKey === "URL").OutputValue;
-    return url;
+    return outputs;
   } catch (error) {
-    spinner.fail("Deployment failed!");
-
-    console.log("Error returning the IP Address of the Project.");
+    console.log("Error retrieving stack outputs");
     process.exit(1);
   }
 };
 
-const updateProjectsTable = async () => {
+const getRegion = (stackOutputs) => {
+  return stackOutputs.find((o) => o.OutputKey === "TinkerRegion").OutputValue;
+};
+const getAdminDomain = (stackOutputs) => {
+  return stackOutputs.find((o) => o.OutputKey === "TinkerAdminDomain")
+    .OutputValue;
+};
+
+const getDomain = async (stackOutputs) => {
+  return stackOutputs.find((o) => o.OutputKey === "TinkerDomainName")
+    .OutputValue;
+};
+
+const updateProjectsTable = async (jwt, projectDomain) => {
   try {
-
     await axios.post(
-      `https://admin.${process.env.DOMAIN_NAME}:3000`,
-      { name: stackName, subdomain: `${stackName}.${process.env.DOMAIN_NAME}` },
-      { Authorization: `Bearer ${jwt}` }
-
+      `https://${adminDomain}:3000/projects`,
+      { name: stackName, domain: projectDomain },
+      { headers: { Authorization: `Bearer ${jwt}` } }
     );
   } catch (error) {
     console.error(error);
     console.log("Error updating projects");
+    process.exit(1);
   }
 };
 
-export const createProject = async (stackName) => {
+const getNextProjectId = async (jwt, adminDomain) => {
+  try {
+    const response = await axios.post(
+      `https://${adminDomain}:3000/rpc/get_next_project_id`,
+      null,
+      {
+        headers: { Authorization: `Bearer ${jwt}` },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    console.log("Error getting next project Id");
+    process.exit(1);
+  }
+};
+
+export const createProject = async (region, stackName, ProjectId) => {
   const template = await readTemplateFromFile(templatePath, encoding);
-  const cloudFormation = new CloudFormation();
+  const cloudFormation = new CloudFormation({ region });
   const stackParams = {
     StackName: stackName,
     TemplateBody: template,
@@ -205,23 +172,40 @@ export const createProject = async (stackName) => {
         ParameterKey: "ProjectName",
         ParameterValue: stackName,
       },
+      {
+        ParameterKey: "RulePriority",
+        ParameterValue: (ProjectId + ruleNumberOffset) % maxRuleNumber,
+      },
     ],
   };
 
   try {
     await createStack(cloudFormation, stackParams, spinner);
     await waitStack(cloudFormation, stackName, spinner);
-    const IPAddress = await retrieveStackOutputs(cloudFormation, stackParams);
-    //send IPaddress with stackName to projects backend
-    return IPAddress;
   } catch (e) {
     console.log("Failed attempting to retrieve Stack output.");
   }
 };
 
-await createProject(stackName);
-updateProjectsTable();
+const tinkerAdminStack = "TinkerAdminStack";
+
+const cloudFormation = new CloudFormation();
+const jwt = await generateJWT(process.env.SECRET);
+
+let stackOutputs = await getStackOutputs(cloudFormation, {
+  StackName: tinkerAdminStack,
+});
+
+let adminDomain = await getAdminDomain(stackOutputs);
+let domain = await getDomain(stackOutputs);
+let region = await getRegion(stackOutputs);
+
+const ProjectId = Number(await getNextProjectId(jwt, adminDomain));
+
+await createProject(region, stackName, ProjectId);
+await updateProjectsTable(jwt, `${stackName}.${domain}`);
 
 console.log();
 console.log(tinkerPurple("Your project was created successfully!"));
+
 process.exit(0);

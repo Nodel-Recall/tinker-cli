@@ -1,93 +1,46 @@
-import {
-  CloudFormation,
-  waitUntilStackDeleteComplete,
-} from "@aws-sdk/client-cloudformation";
-import chalk from "chalk";
-import ora from "ora";
-import axios from "axios";
 import "dotenv/config";
-import { generateJWT } from "../utils/generateJWT.js";
+
+import { generateJWT } from "../utils/jwtHelpers.js";
 import { getProjectName } from "../utils/getProjectName.js";
 
-const spinner = ora({
-  text: "Deleting project...This could take a few minutes.",
-  color: "cyan",
-});
+import {
+  createCloudFormationClient,
+  deleteStack,
+  waitStackDeleteComplete,
+  maxWaitProjectStackTime,
+} from "../utils/awsHelpers.js";
 
-const tinkerPurple = chalk.rgb(99, 102, 241);
+import { deleteProjectAdminTable } from "../utils/services.js";
+import { log, err, createSpinner } from "../utils/ui.js";
 
-const cloudFormation = new CloudFormation();
-const stackName = await getProjectName(); //placeholder til we see what the tinker CL interaction looks like
-const stackParams = { StackName: stackName };
+const spinner = createSpinner(
+  "Deleting project...This could take a few minutes."
+);
 
-async function deleteProjectFromAdminTable(stackName) {
-  try {
-    const token = await generateJWT(process.env.SECRET);
-    await axios.delete(
-      `https://admin.${process.env.DOMAIN_NAME}:3000/projects?name=eq.${stackName}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-  } catch (error) {
-    console.error("Failed to delete project from admin projects table", error);
-  }
+try {
+  const StackName = await getProjectName();
+  const stackParams = { StackName };
+  const cloudFormation = createCloudFormationClient(process.env.REGION);
+  const jwt = await generateJWT(process.env.SECRET);
+
+  spinner.start();
+
+  await deleteStack(cloudFormation, stackParams, process.env.DOMAIN);
+  await deleteProjectAdminTable(jwt, StackName, process.env.DOMAIN);
+  await waitStackDeleteComplete(
+    cloudFormation,
+    StackName,
+    maxWaitProjectStackTime
+  );
+
+  spinner.succeed("Deletion complete!");
+  log("");
+  log("Project deleted successfully!");
+
+  process.exit(0);
+} catch (error) {
+  spinner.fail("Deletion failed!");
+  err(error);
+
+  process.exit(1);
 }
-
-async function promisifyDeleteStack(cloudFormation, stackParams) {
-  return new Promise((res, rej) => {
-    cloudFormation.deleteStack(stackParams, (error, data) => {
-      if (error) {
-        rej(error);
-      }
-      res(error);
-    });
-  });
-}
-
-async function deleteStack(cloudFormation, stackParams, spinner) {
-  try {
-    spinner.start();
-    await promisifyDeleteStack(cloudFormation, stackParams);
-  } catch (error) {
-    spinner.fail("Failed!");
-    console.error(chalk.red("Error Deleting Project"), error);
-    process.exit(1);
-  }
-}
-
-const waitStack = async (cloudFormation, stackName, spinner) => {
-  const waiterParams = {
-    client: cloudFormation,
-    maxWaitTime: 900,
-  };
-
-  const describeStacksCommandInput = {
-    StackName: stackName,
-  };
-
-  try {
-    await waitUntilStackDeleteComplete(
-      waiterParams,
-      describeStacksCommandInput
-    );
-  } catch (error) {
-    spinner.fail("Failed.");
-
-    console.error(chalk.red("Project could not be deleted."), error);
-    process.exit(1);
-  }
-};
-
-const deleteProject = async (cloudFormation, stackParams, spinner) => {
-  const stackName = stackParams.StackName;
-  try {
-    await deleteStack(cloudFormation, stackParams, spinner);
-    await deleteProjectFromAdminTable(stackName)
-    await waitStack(cloudFormation, stackParams, spinner);
-    spinner.succeed(tinkerPurple("Project has been deleted"));
-  } catch (e) {
-    console.error(chalk.red("Project could not be deleted:"), error);
-  }
-};
-
-await deleteProject(cloudFormation, stackParams, spinner);
-await deleteProjectFromAdminTable(stackName);

@@ -11,7 +11,7 @@ export const readTemplateFromFile = async (templatePath, encoding) => {
 
 export const updateConfigurationFiles = async (Domain, secret, region) => {
   await fs.writeFile(file, "");
-  await fs.appendFile(file, `DOMAIN_NAME=${Domain}\n`);
+  await fs.appendFile(file, `DOMAIN=${Domain}\n`);
   await fs.appendFile(file, `SECRET=${secret}\n`);
-  await fs.appendFile(file, `ADMIN_REGION=${region}`);
+  await fs.appendFile(file, `REGION=${region}`);
 };

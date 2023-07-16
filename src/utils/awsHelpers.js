@@ -3,6 +3,8 @@ import {
   CreateStackCommand,
   waitUntilStackCreateComplete,
   DescribeStacksCommand,
+  DeleteStackCommand,
+  waitUntilStackDeleteComplete,
 } from "@aws-sdk/client-cloudformation";
 
 import {
@@ -61,22 +63,44 @@ export const createStack = async (cloudFormation, stackParams) => {
   await cloudFormation.send(command);
 };
 
-export const waitStack = async (cloudFormation, stackName, maxWaitTime) => {
+export const deleteStack = async (cloudFormation, stackParams) => {
+  const command = new DeleteStackCommand(stackParams);
+  await cloudFormation.send(command);
+};
+
+export const waitStackComplete = async (
+  cloudFormation,
+  StackName,
+  maxWaitTime
+) => {
   const waiterParams = {
     client: cloudFormation,
     maxWaitTime,
   };
 
   const describeStacksCommandInput = {
-    StackName: stackName,
+    StackName: StackName,
   };
 
   await waitUntilStackCreateComplete(waiterParams, describeStacksCommandInput);
 };
 
-export const getStackOutputs = async (cloudFormation, stackName) => {
+export const waitStackDeleteComplete = async (cloudFormation, StackName, maxWaitTime) => {
+  const waiterParams = {
+    client: cloudFormation,
+    maxWaitTime,
+  };
+
   const describeStacksCommandInput = {
-    StackName: stackName,
+    StackName: StackName,
+  };
+
+  await waitUntilStackDeleteComplete(waiterParams, describeStacksCommandInput);
+};
+
+export const getStackOutputs = async (cloudFormation, StackName) => {
+  const describeStacksCommandInput = {
+    StackName: StackName,
   };
 
   const describeStacksCommandOutput = await cloudFormation.send(

@@ -2,7 +2,7 @@ import {
   awsRegions,
   createCloudFormationClient,
   createStack,
-  waitStack,
+  waitStackComplete,
   setupAdminStackParams,
   createKeys,
   adminStackName,
@@ -121,7 +121,7 @@ try {
 
   await createKeys(region);
   await createStack(cloudFormation, stackParams);
-  await waitStack(cloudFormation, adminStackName, maxWaitAdminStackTime);
+  await waitStackComplete(cloudFormation, adminStackName, maxWaitAdminStackTime);
   await updateConfigurationFiles(Domain, Secret, region);
 
   spinner.succeed("Deployment complete!");

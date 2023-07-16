@@ -2,10 +2,37 @@ us-east-2 HVM64 AMI is changed to Ubuntu 22.04
 
 TODO: Update all region AMIs to Ubuntu 22.04
 
-## Using Tinker CLI
+# Using Tinker CLI
 
 `npm i -g`
 
-$ Tinker-init : initial setup before deployment. Requires user's AWS credentials, connects to AWS CLI and stores AWS credentials into users `~/.aws/credentials` file.
+# Pre-requisites
+- An AWS account with a domain registered in Route 53
+- The AWS CLI installed and authenticated with a user attached with AdministratorAccess policy
 
-$ Tinker-deploy : takes the users aws credentials in `~/.aws/credtials` file and send a request to AWS CloudFormation using AWS SDK to provision an EX2 and deploys the tinker docker image (or something to that extent) on that EC2.
+# Installation
+```
+npm install tinker-admin-cli
+```
+
+# Usage
+## Create admin portal
+```
+tinker deploy
+```
+When prompted for the domain's hosting zone ID, look for this in Route 53, under the domain's hosted zone details.
+
+## Create project backend
+```
+tinker create
+```
+
+## Delete project backend
+```
+tinker delete
+```
+
+## Teardown admin portal and all projects
+```
+tinker destroy
+```

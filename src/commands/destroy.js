@@ -9,12 +9,12 @@ import {
   maxWaitProjectStackTime,
 } from "../utils/awsHelpers.js";
 
-import { log, err, createSpinner } from "../utils/ui.js";
+import { log, err, createSpinner, confirmInput } from "../utils/ui.js";
 import { generateJWT } from "../utils/jwtHelpers.js";
 import { getAllProjects } from "../utils/services.js";
 
 const spinner = createSpinner(
-  "Tearing down Tinker... this may take a few minutes"
+  "Tearing down Tinker..."
 );
 
 const deleteAllProjects = async (jwt, cloudFormation, adminDomain) => {
@@ -39,6 +39,11 @@ const deleteAllProjects = async (jwt, cloudFormation, adminDomain) => {
 };
 
 try {
+  let confirmed = await confirmInput('Are you sure?')
+  if (!confirmed) {
+    process.exit(0);
+  }
+
   const cloudFormation = createCloudFormationClient(process.env.REGION);
   const stackParams = { StackName: adminStackName };
   const jwt = await generateJWT(process.env.SECRET);

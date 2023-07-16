@@ -1,5 +1,4 @@
 import {
-  awsRegions,
   createCloudFormationClient,
   createStack,
   waitStackComplete,
@@ -19,83 +18,19 @@ import {
 import {
   log,
   err,
-  tinkerPurple,
   tinkerGreen,
   createSpinner,
+  getRegion,
+  getDomain,
+  getHostedZoneId,
 } from "../utils/ui.js";
 
-import readline from "readline";
 import cryptoRandomString from "crypto-random-string";
 
 const minSecretLength = 35;
 const spinner = createSpinner(
   "Deploying to AWS... This may take up to 30 minutes!"
 );
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-const promisifyRegionQuestion = () => {
-  return new Promise((resolve, reject) => {
-    rl.question(tinkerPurple("Enter the region: "), (answer) => {
-      if (!awsRegions.includes(answer)) {
-        reject("Invalid region");
-      }
-
-      resolve(answer);
-    });
-  });
-};
-
-const promisifyDomainQuestion = () => {
-  return new Promise((resolve, reject) => {
-    rl.question(tinkerPurple("Enter the domain: "), (answer) => {
-      if (!isValidDomain(answer)) {
-        reject("Invalid domain");
-      }
-      resolve(answer);
-    });
-  });
-};
-
-const promisifyHostedZoneIdQuestion = () => {
-  return new Promise((resolve) => {
-    rl.question(
-      tinkerPurple("Enter the domain's Hosted Zone Id: "),
-      (answer) => {
-        resolve(answer);
-      }
-    );
-  });
-};
-
-const isValidDomain = (domain) => {
-  const regex = /^(?!:\/\/)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63}$/;
-  return regex.test(domain);
-};
-
-const askDomain = async () => {
-  let domain = await promisifyDomainQuestion();
-  return domain;
-};
-
-const askRegion = async () => {
-  let region = await promisifyRegionQuestion();
-  return region;
-};
-
-const askHostedZoneId = async () => {
-  let hostedZoneId = await promisifyHostedZoneIdQuestion();
-  return hostedZoneId;
-};
-
-const logDeploySuccess = (AdminDomain, Secret) => {
-  console.log();
-  log(`Your admin portal: ${tinkerGreen(`https://${AdminDomain}`)}`);
-  log(`Your secret to create accounts: ${tinkerGreen(Secret)}`);
-};
 
 const Secret = cryptoRandomString({
   length: minSecretLength,
@@ -104,9 +39,9 @@ const Secret = cryptoRandomString({
 
 try {
   const TemplateBody = await readTemplateFromFile(adminTemplate, encoding);
-  const region = await askRegion();
-  const Domain = await askDomain();
-  const HostedZoneId = await askHostedZoneId();
+  const region = await getRegion();
+  const Domain = await getDomain();
+  const HostedZoneId = await getHostedZoneId();
 
   const stackParams = setupAdminStackParams(
     adminStackName,
@@ -121,11 +56,22 @@ try {
 
   await createKeys(region);
   await createStack(cloudFormation, stackParams);
-  await waitStackComplete(cloudFormation, adminStackName, maxWaitAdminStackTime);
+  await waitStackComplete(
+    cloudFormation,
+    adminStackName,
+    maxWaitAdminStackTime
+  );
   await updateConfigurationFiles(Domain, Secret, region);
 
   spinner.succeed("Deployment complete!");
-  logDeploySuccess(`admin.${Domain}`, Secret);
+  log("");
+  log(`Admin portal: ${tinkerGreen(`https://admin.${Domain}`)}`);
+  log(`Secret: ${tinkerGreen(Secret)}`);
+  log("");
+  log(
+    `Note that it takes additional time for your new DNS records to propagate. `
+  );
+  log(`You won't be able to create projects until they do.`);
 
   process.exit(0);
 } catch (error) {
@@ -133,6 +79,4 @@ try {
   err(error);
 
   process.exit(1);
-} finally {
-  rl.close();
 }

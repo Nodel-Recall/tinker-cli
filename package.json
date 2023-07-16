@@ -21,6 +21,7 @@
     "@aws-sdk/client-ec2": "^3.369.0",
     "@inquirer/input": "^1.2.5",
     "@inquirer/prompts": "^3.0.0",
+    "@inquirer/select": "^1.2.5",
     "aws-sdk": "^2.1406.0",
     "aws-sdk-js-codemod": "^0.14.1",
     "axios": "^1.4.0",

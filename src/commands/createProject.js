@@ -13,23 +13,32 @@ import {
 } from "../utils/awsHelpers.js";
 
 import { readTemplateFromFile, encoding } from "../utils/fileHelpers.js";
+
 import {
   insertProjectAdminTable,
   getNextProjectId,
 } from "../utils/services.js";
-import { log, err, createSpinner } from "../utils/ui.js";
-import { generateJWT } from "../utils/jwtHelpers.js";
-import { getProjectName } from "../utils/getProjectName.js";
 
+import {
+  log,
+  err,
+  tinkerGreen,
+  createSpinner,
+  getProjectDetails,
+  getInstanceType,
+} from "../utils/ui.js";
+import { generateJWT } from "../utils/jwtHelpers.js";
+
+const postgrestPort = 3000;
 const spinner = createSpinner(
   "Deploying to AWS... This may take up to 15 minutes!"
 );
-
 const templatePath = process.env.DEVELOPMENT ? emptyTemplate : projectTemplate;
 
 try {
   const TemplateBody = await readTemplateFromFile(templatePath, encoding);
-  const StackName = await getProjectName();
+  const StackName = await getProjectDetails();
+  const InstanceType = await getInstanceType();
   const cloudFormation = createCloudFormationClient(process.env.REGION);
   const jwt = await generateJWT(process.env.SECRET);
   const ProjectId = Number(await getNextProjectId(jwt, process.env.DOMAIN));
@@ -38,7 +47,8 @@ try {
   const stackParams = setupProjectStackParams(
     StackName,
     TemplateBody,
-    RulePriority
+    RulePriority,
+    InstanceType
   );
 
   spinner.start();
@@ -47,9 +57,13 @@ try {
   await waitStackComplete(cloudFormation, StackName, maxWaitProjectStackTime);
   await insertProjectAdminTable(jwt, StackName, process.env.DOMAIN);
 
-  spinner.succeed("Deployment complete!");
+  spinner.succeed("Creation complete!");
   log("");
-  log("Project created successfully!");
+  log(
+    `Project backend: ${tinkerGreen(
+      `https://${StackName}.${process.env.DOMAIN}:${postgrestPort}`
+    )}`
+  );
 
   process.exit(0);
 } catch (error) {

@@ -2,6 +2,7 @@ import {
   CloudFormationClient,
   CreateStackCommand,
   waitUntilStackCreateComplete,
+  DescribeStacksCommand,
 } from "@aws-sdk/client-cloudformation";
 
 import {
@@ -9,6 +10,8 @@ import {
   CreateKeyPairCommand,
   DescribeKeyPairsCommand,
 } from "@aws-sdk/client-ec2";
+
+import fs from "fs/promises";
 
 export const awsRegions = [
   "us-east-1",
@@ -32,6 +35,13 @@ export const awsRegions = [
   "sa-east-1",
 ];
 
+const tinkerKeyName = "tinker_keys";
+
+export const readTemplateFromFile = async (templatePath, encoding) => {
+  const template = await fs.readFile(templatePath, encoding);
+  return template;
+};
+
 export const createCloudFormationClient = (region) => {
   return new CloudFormationClient({ region });
 };
@@ -52,6 +62,26 @@ export const waitStack = async (cloudFormation, stackName, maxWaitTime) => {
   };
 
   await waitUntilStackCreateComplete(waiterParams, describeStacksCommandInput);
+};
+
+export const getStackOutputs = async (cloudFormation, stackName) => {
+  const describeStacksCommandInput = {
+    StackName: stackName,
+  };
+
+  const describeStacksCommandOutput = await cloudFormation.send(
+    new DescribeStacksCommand(describeStacksCommandInput)
+  );
+
+  const stack = describeStacksCommandOutput.Stacks[0];
+  return stack.Outputs;
+};
+
+export const updateConfigurationFiles = async (Domain, secret, region) => {
+  await fs.writeFile(".env", "");
+  await fs.appendFile(".env", `DOMAIN_NAME=${Domain}\n`);
+  await fs.appendFile(".env", `SECRET=${secret}\n`);
+  await fs.appendFile(".env", `ADMIN_REGION=${region}`);
 };
 
 export const setupAdminStackParams = (
@@ -92,11 +122,32 @@ export const setupAdminStackParams = (
   };
 };
 
+export const setupProjectStackParams = (
+  StackName,
+  TemplateBody,
+  RulePriority
+) => {
+  return {
+    StackName,
+    TemplateBody,
+    Parameters: [
+      {
+        ParameterKey: "ProjectName",
+        ParameterValue: StackName,
+      },
+      {
+        ParameterKey: "RulePriority",
+        ParameterValue: RulePriority,
+      },
+    ],
+  };
+};
+
 export const createKeys = async (region) => {
   const client = new EC2Client({ region });
   const keysExist = await doTinkerKeysExist(client);
   if (!keysExist) {
-    const command = new CreateKeyPairCommand({ KeyName: "tinker_keys" });
+    const command = new CreateKeyPairCommand({ KeyName: tinkerKeyName });
     const response = await client.send(command);
     console.log("key creation response", response.KeyMaterial); //still working out what to do with the secret access key
   }
@@ -106,7 +157,7 @@ const doTinkerKeysExist = async (client) => {
   const command = new DescribeKeyPairsCommand({}); ///Didn't filter specifically for tinker_keys because if it isn't found, it raises an error
   const response = await client.send(command);
   for (let key of response.KeyPairs) {
-    if (key.KeyName === "tinker_keys") {
+    if (key.KeyName === tinkerKeyName) {
       return true;
     }
   }

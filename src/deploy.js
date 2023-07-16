@@ -1,34 +1,40 @@
 import {
   awsRegions,
+  readTemplateFromFile,
   createCloudFormationClient,
   createStack,
   waitStack,
+  updateConfigurationFiles,
   setupAdminStackParams,
   createKeys,
 } from "../utils/awsHelpers.js";
 
-import { log, err, tinkerPurple, tinkerGreen } from "../utils/ui.js";
+import {
+  log,
+  err,
+  tinkerPurple,
+  tinkerGreen,
+  createSpinner,
+} from "../utils/ui.js";
 
 import readline from "readline";
-import ora from "ora";
-import fs from "fs/promises";
 import cryptoRandomString from "crypto-random-string";
+import {
+  adminStackName,
+  adminTemplate,
+  maxWaitAdminStackTime,
+  encoding,
+  minSecretLength,
+} from "../utils/constants.js";
 
-const spinner = ora({
-  text: "Deploying to AWS... This may take up to 15 minutes!",
-  color: "cyan",
-});
+const spinner = createSpinner(
+  "Deploying to AWS... This may take up to 30 minutes!"
+);
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-
-const StackName = "TinkerAdminStack";
-const minSecretLength = 35;
-const templatePath = "./tinker_admin_template.json";
-const encoding = "utf8";
-const maxWaitAdminStackTime = 900;
 
 const promisifyRegionQuestion = () => {
   return new Promise((resolve, reject) => {
@@ -90,29 +96,19 @@ const logDeploySuccess = (AdminDomain, Secret) => {
   log(`Your secret to create accounts: ${tinkerGreen(Secret)}`);
 };
 
-const readTemplateFromFile = async (templatePath, encoding) => {
-  const template = await fs.readFile(templatePath, encoding);
-  return template;
-};
-
-const updateConfigurationFiles = async (Domain, secret) => {
-  await fs.appendFile(".env", `DOMAIN_NAME=${Domain}`);
-  await fs.appendFile(".env", `\nSECRET=${secret}`);
-};
-
 const Secret = cryptoRandomString({
   length: minSecretLength,
   type: "alphanumeric",
 });
 
 try {
-  const TemplateBody = await readTemplateFromFile(templatePath, encoding);
+  const TemplateBody = await readTemplateFromFile(adminTemplate, encoding);
   const region = await askRegion();
   const Domain = await askDomain();
   const HostedZoneId = await askHostedZoneId();
 
   const stackParams = setupAdminStackParams(
-    StackName,
+    adminStackName,
     TemplateBody,
     Domain,
     HostedZoneId,
@@ -124,8 +120,8 @@ try {
 
   await createKeys(region);
   await createStack(cloudFormation, stackParams);
-  await waitStack(cloudFormation, StackName, maxWaitAdminStackTime);
-  await updateConfigurationFiles(Domain, Secret);
+  await waitStack(cloudFormation, adminStackName, maxWaitAdminStackTime);
+  await updateConfigurationFiles(Domain, Secret, region);
 
   spinner.succeed("Deployment complete!");
   logDeploySuccess(`admin.${Domain}`, Secret);

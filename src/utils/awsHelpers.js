@@ -11,8 +11,6 @@ import {
   DescribeKeyPairsCommand,
 } from "@aws-sdk/client-ec2";
 
-import fs from "fs/promises";
-
 export const awsRegions = [
   "us-east-1",
   "us-east-2",
@@ -35,12 +33,24 @@ export const awsRegions = [
   "sa-east-1",
 ];
 
-const tinkerKeyName = "tinker_keys";
+export const adminStackName = "TinkerAdminStack";
+export const emptyTemplate = "./src/templates/empty.json";
+export const projectTemplate = "./src/templates/project.json";
+export const adminTemplate = "./src/templates/admin.json";
 
-export const readTemplateFromFile = async (templatePath, encoding) => {
-  const template = await fs.readFile(templatePath, encoding);
-  return template;
-};
+export const maxWaitProjectStackTime = 900;
+export const maxWaitAdminStackTime = 900;
+
+// ALB listener rules must have unique priorities from 1-50000
+// Rule for admin is 1, so projects must be offset
+// Rule number is determined from projects' primary key
+export const ruleNumberOffset = 1;
+export const maxRuleNumber = 50000;
+
+export const stackOutputKeyTinkerRegion = "TinkerRegion";
+export const stackOutputKeyTinkerDomainName = "TinkerDomainName";
+export const stackOutputKeyTinkerAdminDomain = "TinkerAdminDomain";
+const tinkerKeyName = "tinker_keys";
 
 export const createCloudFormationClient = (region) => {
   return new CloudFormationClient({ region });
@@ -75,13 +85,6 @@ export const getStackOutputs = async (cloudFormation, stackName) => {
 
   const stack = describeStacksCommandOutput.Stacks[0];
   return stack.Outputs;
-};
-
-export const updateConfigurationFiles = async (Domain, secret, region) => {
-  await fs.writeFile(".env", "");
-  await fs.appendFile(".env", `DOMAIN_NAME=${Domain}\n`);
-  await fs.appendFile(".env", `SECRET=${secret}\n`);
-  await fs.appendFile(".env", `ADMIN_REGION=${region}`);
 };
 
 export const setupAdminStackParams = (
@@ -162,4 +165,8 @@ const doTinkerKeysExist = async (client) => {
     }
   }
   return false;
+};
+
+export const getStackOutputFromKey = (stackOutputs, key) => {
+  return stackOutputs.find((o) => o.OutputKey === key).OutputValue;
 };

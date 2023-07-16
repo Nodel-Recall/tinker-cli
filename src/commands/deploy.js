@@ -1,13 +1,20 @@
 import {
   awsRegions,
-  readTemplateFromFile,
   createCloudFormationClient,
   createStack,
   waitStack,
-  updateConfigurationFiles,
   setupAdminStackParams,
   createKeys,
+  adminStackName,
+  adminTemplate,
+  maxWaitAdminStackTime,
 } from "../utils/awsHelpers.js";
+
+import {
+  readTemplateFromFile,
+  updateConfigurationFiles,
+  encoding,
+} from "../utils/fileHelpers.js";
 
 import {
   log,
@@ -19,14 +26,8 @@ import {
 
 import readline from "readline";
 import cryptoRandomString from "crypto-random-string";
-import {
-  adminStackName,
-  adminTemplate,
-  maxWaitAdminStackTime,
-  encoding,
-  minSecretLength,
-} from "../utils/constants.js";
 
+const minSecretLength = 35;
 const spinner = createSpinner(
   "Deploying to AWS... This may take up to 30 minutes!"
 );

@@ -2,52 +2,34 @@ import axios from "axios";
 import "dotenv/config";
 
 import {
-  readTemplateFromFile,
   createCloudFormationClient,
   createStack,
   waitStack,
   getStackOutputs,
+  getStackOutputFromKey,
   setupProjectStackParams,
+  adminStackName,
+  maxWaitProjectStackTime,
+  ruleNumberOffset,
+  maxRuleNumber,
+  projectTemplate,
+  emptyTemplate,
+  stackOutputKeyTinkerDomainName,
+  stackOutputKeyTinkerAdminDomain,
+  stackOutputKeyTinkerRegion,
 } from "../utils/awsHelpers.js";
+
+import { readTemplateFromFile, encoding } from "../utils/fileHelpers.js";
 
 import { log, err, createSpinner } from "../utils/ui.js";
 import { generateJWT } from "../utils/generateJWT.js";
 import { getProjectName } from "../utils/getProjectName.js";
-
-import {
-  adminStackName,
-  encoding,
-  maxWaitProjectStackTime,
-  ruleNumberOffset,
-  maxRuleNumber,
-  awsStackOutputKeyTinkerRegion,
-  awsStackOutputKeyTinkerDomainName,
-  awsStackOutputKeyTinkerAdminDomain,
-  projectTemplate,
-  emptyTemplate,
-} from "../utils/constants.js";
 
 const spinner = createSpinner(
   "Deploying to AWS... This may take up to 15 minutes!"
 );
 
 const templatePath = process.env.DEVELOPMENT ? emptyTemplate : projectTemplate;
-
-const getRegion = (stackOutputs) => {
-  return stackOutputs.find((o) => o.OutputKey === awsStackOutputKeyTinkerRegion)
-    .OutputValue;
-};
-const getAdminDomain = (stackOutputs) => {
-  return stackOutputs.find(
-    (o) => o.OutputKey === awsStackOutputKeyTinkerAdminDomain
-  ).OutputValue;
-};
-
-const getDomain = async (stackOutputs) => {
-  return stackOutputs.find(
-    (o) => o.OutputKey === awsStackOutputKeyTinkerDomainName
-  ).OutputValue;
-};
 
 const updateProjectsTable = async (jwt, StackName, domain, adminDomain) => {
   await axios.post(
@@ -75,13 +57,15 @@ try {
 
   const adminRegion = process.env.ADMIN_REGION;
   const cloudFormationAdminRegion = createCloudFormationClient(adminRegion);
+
   let adminStackOutputs = await getStackOutputs(
     cloudFormationAdminRegion,
     adminStackName
   );
-  const adminDomain = await getAdminDomain(adminStackOutputs);
-  const domain = await getDomain(adminStackOutputs);
-  const region = await getRegion(adminStackOutputs);
+
+  const adminDomain = await getStackOutputFromKey(adminStackOutputs, stackOutputKeyTinkerAdminDomain);
+  const domain = await getStackOutputFromKey(adminStackOutputs, stackOutputKeyTinkerDomainName);
+  const region = await getStackOutputFromKey(adminStackOutputs, stackOutputKeyTinkerRegion);
 
   const jwt = await generateJWT(process.env.SECRET);
   const ProjectId = Number(await getNextProjectId(jwt, adminDomain));

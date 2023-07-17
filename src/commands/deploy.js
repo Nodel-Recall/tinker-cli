@@ -37,46 +37,65 @@ const Secret = cryptoRandomString({
   type: "alphanumeric",
 });
 
-try {
-  const TemplateBody = await readTemplateFromFile(adminTemplate, encoding);
-  const region = await getRegion();
-  const Domain = await getDomain();
-  const HostedZoneId = await getHostedZoneId();
+const deploy = async ({ region, domain, zone }) => {
+  try {
+    const TemplateBody = await readTemplateFromFile(adminTemplate, encoding);
 
-  const stackParams = setupAdminStackParams(
-    adminStackName,
-    TemplateBody,
-    Domain,
-    HostedZoneId,
-    Secret
-  );
-  const cloudFormation = createCloudFormationClient(region);
+    if (!region) {
+      region = await getRegion();
+    }
 
-  spinner.start();
+    let Domain;
+    if (!domain) {
+      Domain = await getDomain();
+    } else {
+      Domain = domain;
+    }
 
-  await createKeys(region);
-  await createStack(cloudFormation, stackParams);
-  await waitStackComplete(
-    cloudFormation,
-    adminStackName,
-    maxWaitAdminStackTime
-  );
-  await updateConfigurationFiles(Domain, Secret, region);
+    let HostedZoneId;
+    if (!zone) {
+      HostedZoneId = await getHostedZoneId();
+    } else {
+      HostedZoneId = zone;
+    }
 
-  spinner.succeed("Deployment complete!");
-  log("");
-  log(`Admin portal: ${tinkerGreen(`https://admin.${Domain}`)}`);
-  log(`Secret: ${tinkerGreen(Secret)}`);
-  log("");
-  log(
-    `Note that it takes additional time for your new DNS records to propagate. `
-  );
-  log(`You won't be able to create projects until they do.`);
+    const stackParams = setupAdminStackParams(
+      adminStackName,
+      TemplateBody,
+      Domain,
+      HostedZoneId,
+      Secret
+    );
+    const cloudFormation = createCloudFormationClient(region);
 
-  process.exit(0);
-} catch (error) {
-  spinner.fail("Deployment failed!");
-  err(error);
+    spinner.start();
 
-  process.exit(1);
-}
+    await createKeys(region);
+    await createStack(cloudFormation, stackParams);
+    await waitStackComplete(
+      cloudFormation,
+      adminStackName,
+      maxWaitAdminStackTime
+    );
+    await updateConfigurationFiles(Domain, Secret, region);
+
+    spinner.succeed("Deployment complete!");
+    log("");
+    log(`Admin portal: ${tinkerGreen(`https://admin.${Domain}`)}`);
+    log(`Secret: ${tinkerGreen(Secret)}`);
+    log("");
+    log(
+      `Note that it takes additional time for your new DNS records to propagate. `
+    );
+    log(`You won't be able to create projects until they do.`);
+
+    process.exit(0);
+  } catch (error) {
+    spinner.fail("Deployment failed!");
+    err(error);
+
+    process.exit(1);
+  }
+};
+
+export default deploy;

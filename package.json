@@ -2,7 +2,7 @@
   "name": "tinker-cli",
   "description": "us-east-2 HVM64 AMI is changed to Ubuntu 22.04",
   "version": "1.0.0",
-  "main": "bin/index.js",
+  "main": "./src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/Nodel-Recall/tinker-cli.git"
   },
-  "author": "Nodel-Recall",
+  "author": "Tinker",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Nodel-Recall/tinker-cli/issues"
@@ -33,9 +33,9 @@
     "yargs": "^17.7.2"
   },
   "bin": {
-    "tinker-init": "./bin/index.js",
-    "tinker-deploy": "./bin/deploy.js"
+    "tinker": "./bin/tinker.js"
   },
+  "preferGlobal": true,
   "type": "module",
   "devDependencies": {
     "eslint": "^8.45.0"

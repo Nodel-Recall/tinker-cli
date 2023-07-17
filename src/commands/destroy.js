@@ -13,9 +13,7 @@ import { log, err, createSpinner, confirmInput } from "../utils/ui.js";
 import { generateJWT } from "../utils/jwtHelpers.js";
 import { getAllProjects } from "../utils/services.js";
 
-const spinner = createSpinner(
-  "Tearing down Tinker..."
-);
+const spinner = createSpinner("Tearing down Tinker...");
 
 const deleteAllProjects = async (jwt, cloudFormation, adminDomain) => {
   const activeProjects = await getAllProjects(jwt, adminDomain);
@@ -38,32 +36,42 @@ const deleteAllProjects = async (jwt, cloudFormation, adminDomain) => {
   await Promise.all(waitProjectDeletionPromises);
 };
 
-try {
-  let confirmed = await confirmInput('Are you sure?')
-  if (!confirmed) {
-    process.exit(0);
+const destroy = async ({ force }) => {
+  try {
+    let confirmed
+    if (!force) {
+      confirmed = await confirmInput("Are you sure?");
+    } else {
+      confirmed = true;
+    }
+
+    if (!confirmed) {
+      process.exit(0);
+    }
+
+    const cloudFormation = createCloudFormationClient(process.env.REGION);
+    const stackParams = { StackName: adminStackName };
+    const jwt = await generateJWT(process.env.SECRET);
+
+    spinner.start();
+
+    await deleteAllProjects(jwt, cloudFormation, process.env.DOMAIN);
+    await deleteStack(cloudFormation, stackParams, process.env.DOMAIN);
+    await waitStackDeleteComplete(
+      cloudFormation,
+      adminStackName,
+      maxWaitAdminStackTime
+    );
+
+    spinner.succeed("Teardown complete!");
+    log("");
+    log("Tinker deleted successfully!");
+  } catch (error) {
+    spinner.fail("Teardown failed!");
+    err(error);
+
+    process.exit(1);
   }
+};
 
-  const cloudFormation = createCloudFormationClient(process.env.REGION);
-  const stackParams = { StackName: adminStackName };
-  const jwt = await generateJWT(process.env.SECRET);
-
-  spinner.start();
-
-  await deleteAllProjects(jwt, cloudFormation, process.env.DOMAIN);
-  await deleteStack(cloudFormation, stackParams, process.env.DOMAIN);
-  await waitStackDeleteComplete(
-    cloudFormation,
-    adminStackName,
-    maxWaitAdminStackTime
-  );
-
-  spinner.succeed("Teardown complete!");
-  log("");
-  log("Tinker deleted successfully!");
-} catch (error) {
-  spinner.fail("Teardown failed!");
-  err(error);
-
-  process.exit(1);
-}
+export default destroy;

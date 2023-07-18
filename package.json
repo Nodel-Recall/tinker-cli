@@ -1,21 +1,21 @@
 {
-  "name": "tinker-cli",
-  "description": "us-east-2 HVM64 AMI is changed to Ubuntu 22.04",
-  "version": "1.0.0",
+  "name": "tinker-admin-cli",
+  "description": "CLI for managing your Tinker infrastructure",
+  "version": "0.1.0",
   "main": "./src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nodel-Recall/tinker-cli.git"
+    "url": "git+https://github.com/tinker-base/tinker-admin-cli.git"
   },
   "author": "Tinker",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Nodel-Recall/tinker-cli/issues"
+    "url": "https://github.com/tinker-base/tinker-admin-cli/issues"
   },
-  "homepage": "https://github.com/Nodel-Recall/tinker-cli#readme",
+  "homepage": "https://github.com/tinker-base/tinker-admin-cli#readme",
   "dependencies": {
     "@aws-sdk/client-cloudformation": "^3.362.0",
     "@aws-sdk/client-ec2": "^3.369.0",

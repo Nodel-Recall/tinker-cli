@@ -443,7 +443,7 @@
                 "curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -\n",
                 "sudo apt install nodejs -y\n",
                 "cd home/ubuntu && sudo git clone https://github.com/Nodel-Recall/tinker-admin-app.git\n",
-                "sudo git clone https://github.com/Nodel-Recall/tinker-cli.git\n",
+                "sudo git clone https://github.com/tinker-base/tinker-admin-cli.git\n",
                 "cd tinker-admin-app && sudo npm install -y\n",
 
                 "sudo chown ubuntu:ubuntu .env\n",
@@ -453,7 +453,7 @@
                 },
                 "\" >> .env\n",
                 "sudo npm run build\n",
-                "mv build ../tinker-cli/docker\n",
+                "mv build ../tinker-admin-cli/docker\n",
                 "apt-cache policy docker-ce\n",
                 "sudo apt install -y docker-ce\n",
                 "mkdir -p ~/.docker/cli-plugins/\n",
@@ -464,7 +464,7 @@
                   "Ref": "Secret"
                 },
                 "\" >> /etc/environment\n",
-                "sudo -u ubuntu sh -c 'cd ~ && cd tinker-cli/docker && sudo docker compose up -d'\n"
+                "sudo -u ubuntu sh -c 'cd ~ && cd tinker-admin-cli/docker && sudo docker compose up -d'\n"
               ]
             ]
           }

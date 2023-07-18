@@ -1,3 +1,4 @@
+import fs from "fs/promises";
 import "dotenv/config";
 
 import {
@@ -7,11 +8,13 @@ import {
   maxWaitAdminStackTime,
   waitStackDeleteComplete,
   maxWaitProjectStackTime,
+  deleteKeys,
 } from "../utils/awsHelpers.js";
 
 import { log, err, createSpinner, confirmInput } from "../utils/ui.js";
 import { generateJWT } from "../utils/jwtHelpers.js";
 import { getAllProjects } from "../utils/services.js";
+import { configFile, sshPrivateKey } from "../utils/fileHelpers.js";
 
 const spinner = createSpinner("Tearing down Tinker...");
 
@@ -38,7 +41,7 @@ const deleteAllProjects = async (jwt, cloudFormation, adminDomain) => {
 
 const destroy = async ({ force }) => {
   try {
-    let confirmed
+    let confirmed;
     if (!force) {
       confirmed = await confirmInput("Are you sure?");
     } else {
@@ -62,6 +65,10 @@ const destroy = async ({ force }) => {
       adminStackName,
       maxWaitAdminStackTime
     );
+    await deleteKeys(process.env.REGION);
+
+    await fs.writeFile(configFile, "");
+    await fs.unlink(sshPrivateKey);
 
     spinner.succeed("Teardown complete!");
     log("");

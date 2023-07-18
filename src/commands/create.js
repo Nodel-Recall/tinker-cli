@@ -1,4 +1,5 @@
 import "dotenv/config";
+import fs from "fs/promises";
 
 import {
   createCloudFormationClient,
@@ -12,7 +13,7 @@ import {
   emptyTemplate,
 } from "../utils/awsHelpers.js";
 
-import { readTemplateFromFile, encoding } from "../utils/fileHelpers.js";
+import { encoding } from "../utils/fileHelpers.js";
 
 import {
   insertProjectAdminTable,
@@ -37,7 +38,7 @@ const templatePath = process.env.DEVELOPMENT ? emptyTemplate : projectTemplate;
 
 const create = async ({ name, instance }) => {
   try {
-    const TemplateBody = await readTemplateFromFile(templatePath, encoding);
+    const TemplateBody = await fs.readFile(templatePath, encoding);
 
     let StackName;
     if (!name) {

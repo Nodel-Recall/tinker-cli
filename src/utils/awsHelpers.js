@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+
 import {
   CloudFormationClient,
   CreateStackCommand,
@@ -10,8 +12,11 @@ import {
 import {
   EC2Client,
   CreateKeyPairCommand,
+  DeleteKeyPairCommand,
   DescribeKeyPairsCommand,
 } from "@aws-sdk/client-ec2";
+
+import { sshPrivateKey } from "./fileHelpers.js";
 
 export const adminStackName = "TinkerAdminStack";
 export const emptyTemplate = "./src/templates/empty.json";
@@ -27,7 +32,7 @@ export const maxWaitAdminStackTime = 900;
 export const ruleNumberOffset = 1;
 export const maxRuleNumber = 50000;
 
-const tinkerKeyName = "tinker_keys";
+const tinkerKeyName = sshPrivateKey.split('.')[0];
 
 export const createCloudFormationClient = (region) => {
   return new CloudFormationClient({ region });
@@ -135,7 +140,8 @@ export const setupAdminStackParams = (
 export const setupProjectStackParams = (
   StackName,
   TemplateBody,
-  RulePriority
+  RulePriority,
+  InstanceType
 ) => {
   return {
     StackName,
@@ -149,6 +155,10 @@ export const setupProjectStackParams = (
         ParameterKey: "RulePriority",
         ParameterValue: RulePriority,
       },
+      {
+        ParameterKey: "InstanceType",
+        ParameterValue: InstanceType,
+      },
     ],
   };
 };
@@ -156,20 +166,34 @@ export const setupProjectStackParams = (
 export const createKeys = async (region) => {
   const client = new EC2Client({ region });
   const keysExist = await doTinkerKeysExist(client);
+
   if (!keysExist) {
     const command = new CreateKeyPairCommand({ KeyName: tinkerKeyName });
     const response = await client.send(command);
-    console.log("key creation response", response.KeyMaterial); //still working out what to do with the secret access key
+
+    await fs.writeFile(sshPrivateKey, response.KeyMaterial, { flag: "wx" });
+  }
+};
+
+export const deleteKeys = async (region) => {
+  const client = new EC2Client({ region });
+  const keysExist = await doTinkerKeysExist(client);
+
+  if (keysExist) {
+    const command = new DeleteKeyPairCommand({ KeyName: tinkerKeyName });
+    await client.send(command);
   }
 };
 
 const doTinkerKeysExist = async (client) => {
-  const command = new DescribeKeyPairsCommand({}); ///Didn't filter specifically for tinker_keys because if it isn't found, it raises an error
+  const command = new DescribeKeyPairsCommand({});
   const response = await client.send(command);
+
   for (let key of response.KeyPairs) {
     if (key.KeyName === tinkerKeyName) {
       return true;
     }
   }
+
   return false;
 };

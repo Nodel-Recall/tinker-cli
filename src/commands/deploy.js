@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+
 import {
   createCloudFormationClient,
   createStack,
@@ -9,11 +11,7 @@ import {
   maxWaitAdminStackTime,
 } from "../utils/awsHelpers.js";
 
-import {
-  readTemplateFromFile,
-  updateConfigurationFiles,
-  encoding,
-} from "../utils/fileHelpers.js";
+import { encoding, configFile, sshPrivateKey } from "../utils/fileHelpers.js";
 
 import {
   log,
@@ -37,9 +35,16 @@ const Secret = cryptoRandomString({
   type: "alphanumeric",
 });
 
+export const updateConfigurationFiles = async (Domain, secret, region) => {
+  await fs.writeFile(configFile, "");
+  await fs.appendFile(configFile, `DOMAIN=${Domain}\n`);
+  await fs.appendFile(configFile, `SECRET=${secret}\n`);
+  await fs.appendFile(configFile, `REGION=${region}`);
+};
+
 const deploy = async ({ region, domain, zone }) => {
   try {
-    const TemplateBody = await readTemplateFromFile(adminTemplate, encoding);
+    const TemplateBody = await fs.readFile(adminTemplate, encoding);
 
     if (!region) {
       region = await getRegion();
@@ -83,6 +88,7 @@ const deploy = async ({ region, domain, zone }) => {
     log("");
     log(`Admin portal: ${tinkerGreen(`https://admin.${Domain}`)}`);
     log(`Secret: ${tinkerGreen(Secret)}`);
+    log(`Use the private key ${sshPrivateKey} in this directory to SSH into the admin portal and project instances.`)
     log("");
     log(
       `Note that it takes additional time for your new DNS records to propagate. `

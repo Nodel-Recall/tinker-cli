@@ -7,9 +7,12 @@ CREATE OR REPLACE FUNCTION get_columns_from_table(p_table_name TEXT)
     RETURN QUERY
     SELECT column_name::TEXT, udt_name::TEXT
     FROM information_schema.columns
-    WHERE table_name = p_table_name;
+    WHERE table_name = p_table_name
+    ORDER BY ordinal_position;
   END;
-  $$ LANGUAGE plpgsql;
+  $$
+  LANGUAGE plpgsql;
+
 
 -- get the constraints of each column in a table
 CREATE OR REPLACE FUNCTION get_column_constraints(p_table_name TEXT)

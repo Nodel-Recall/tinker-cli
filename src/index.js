@@ -59,10 +59,10 @@ const destroyOptions = (yargs) => {
 
 Yargs(process.argv.slice(2))
   .usage("Usage: $0 <command> [options]")
-  .command("deploy", "Deploy admin portal to AWS", deployOptions, deploy)
+  .command("deploy", "Deploy admin dashboard to AWS", deployOptions, deploy)
   .example(
     "$0 deploy -r us-east-1 -d trytinker.com -z ABC123",
-    "Deploy admin portal and subsequence projects to region us-east-1 with domain trytinker.com and hosting zone ID abc123"
+    "Deploy admin dashboard and subsequence projects to region us-east-1 with domain trytinker.com and hosting zone ID abc123"
   )
   .command("create", "Create a project backend in AWS", createOptions, create)
   .example("$0 create -n todos", "Create a backend for todos project")
@@ -75,13 +75,13 @@ Yargs(process.argv.slice(2))
   .example("$0 delete -n todos", "Delete the todos project backend")
   .command(
     "destroy",
-    "Teardown all projects and admin portal from AWS",
+    "Teardown all projects and admin dashboard from AWS",
     destroyOptions,
     destroy
   )
   .example(
     "$0 destroy -f",
-    "Teardown all projects and admin portal without confirmation"
+    "Teardown all projects and admin dashboard without confirmation"
   )
   .demandCommand(1, "Please specify a command.")
   .strict()

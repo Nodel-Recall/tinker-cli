@@ -86,9 +86,9 @@ const deploy = async ({ region, domain, zone }) => {
 
     spinner.succeed("Deployment complete!");
     log("");
-    log(`Admin portal: ${tinkerGreen(`https://admin.${Domain}`)}`);
+    log(`Admin dashboard: ${tinkerGreen(`https://admin.${Domain}`)}`);
     log(`Secret: ${tinkerGreen(Secret)}`);
-    log(`Use the private key ${sshPrivateKey} in this directory to SSH into the admin portal and project instances.`)
+    log(`Use the private key ${sshPrivateKey} in this directory to SSH into the admin dashboard and project instances.`)
     log("");
     log(
       `Note that it takes additional time for your new DNS records to propagate. `

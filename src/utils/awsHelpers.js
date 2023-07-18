@@ -18,11 +18,15 @@ import {
 
 import { sshPrivateKey } from "./fileHelpers.js";
 
-export const adminStackName = "TinkerAdminStack";
-export const emptyTemplate = "./src/templates/empty.json";
-export const projectTemplate = "./src/templates/project.json";
-export const adminTemplate = "./src/templates/admin.json";
+import path from "path";
+import { fileURLToPath } from 'url';
 
+const __dirname = fileURLToPath(path.dirname(import.meta.url));
+export const emptyTemplate = path.resolve(__dirname, "../templates/empty.json");
+export const projectTemplate = path.resolve(__dirname, "../templates/project.json");
+export const adminTemplate = path.resolve(__dirname, "../templates/admin.json");
+
+export const adminStackName = "TinkerAdminStack";
 export const maxWaitProjectStackTime = 900;
 export const maxWaitAdminStackTime = 900;
 
@@ -32,7 +36,7 @@ export const maxWaitAdminStackTime = 900;
 export const ruleNumberOffset = 1;
 export const maxRuleNumber = 50000;
 
-const tinkerKeyName = sshPrivateKey.split('.')[0];
+const tinkerKeyName = sshPrivateKey.split(".")[0];
 
 export const createCloudFormationClient = (region) => {
   return new CloudFormationClient({ region });

@@ -1,10 +1,5 @@
-us-east-2 HVM64 AMI is changed to Ubuntu 22.04
-
-TODO: Update all region AMIs to Ubuntu 22.04
-
-# Using Tinker CLI
-
-`npm i -g`
+# Tinker Admin CLI
+Tinker automates the creation of backends for your web applications.
 
 # Pre-requisites
 - An AWS account with a domain registered in Route 53
@@ -12,11 +7,11 @@ TODO: Update all region AMIs to Ubuntu 22.04
 
 # Installation
 ```
-npm install tinker-admin-cli
+npm i -g tinker-admin-cli
 ```
 
 # Usage
-## Create admin portal
+## Create admin dashboard
 ```
 tinker deploy
 ```
@@ -32,7 +27,7 @@ tinker create
 tinker delete
 ```
 
-## Teardown admin portal and all projects
+## Teardown admin dashboard and all projects
 ```
 tinker destroy
 ```

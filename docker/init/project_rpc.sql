@@ -47,30 +47,58 @@ CREATE OR REPLACE FUNCTION get_column_constraints(schema_name TEXT, p_table_name
 
 -- adding descriptions to a table
 
--- CREATE OR REPLACE FUNCTION add_table_comment(schema_name TEXT, p_table_name TEXT, p_comment TEXT)
---   RETURNS VOID
---   AS $$
---   BEGIN
---     EXECUTE 'COMMENT ON TABLE ' || p_table_name || ' IS ' || quote_literal(p_comment);
---   END;
---   $$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION add_table_comment(p_schema_name TEXT, p_table_name TEXT, p_comment TEXT)
+  RETURNS BOOL
+  AS $$
+BEGIN
+    EXECUTE 'COMMENT ON TABLE ' || quote_ident(p_schema_name) || '.' || quote_ident(p_table_name) || ' IS ' || quote_literal(p_comment);
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql;
+
 
 -- viewing the table description
 
--- CREATE OR REPLACE FUNCTION view_table_description(schema_name TEXT, p_table_name TEXT)
---   RETURNS TEXT
---   AS $$
---   DECLARE
---     v_description TEXT;
---   BEGIN
---     SELECT description
---     INTO v_description
---     FROM pg_description
---     WHERE objoid = p_table_name::regclass;
-    
---     RETURN v_description;
---   END;
---   $$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION view_table_description(p_schema_name TEXT, p_table_name TEXT)
+  RETURNS TEXT
+  AS $$
+DECLARE
+    v_description TEXT;
+BEGIN
+    SELECT description
+    INTO v_description
+    FROM pg_description
+    WHERE objoid = (p_schema_name || '.' || p_table_name)::regclass;
+
+    RETURN v_description;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- update a table description
+
+CREATE OR REPLACE FUNCTION update_table_description(p_schema_name text, p_table_name text, new_description text)
+RETURNS BOOLEAN AS
+$$
+BEGIN
+    -- Check if the table exists
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.tables AS st 
+        WHERE st.table_schema = p_schema_name AND st.table_name = p_table_name
+    ) THEN
+        -- Build and execute the dynamic SQL statement to update the table's description
+        EXECUTE 'COMMENT ON TABLE ' || quote_ident(p_schema_name) || '.' || quote_ident(p_table_name) || ' IS ' || quote_literal(new_description);
+        RETURN TRUE;
+    ELSE
+        -- Table does not exist
+        RETURN FALSE;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+
 
 -- creating a new table, takes an arrays of statements for the columns
 CREATE OR REPLACE FUNCTION create_table(
@@ -111,6 +139,44 @@ BEGIN
   RETURN true;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- edit table name
+CREATE OR REPLACE FUNCTION update_table_name(schema_name text, old_table_name text, new_table_name text)
+RETURNS BOOLEAN AS
+$$
+DECLARE
+    sql_query text;
+BEGIN
+    -- Check if the old table exists
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = schema_name AND table_name = old_table_name
+    ) THEN
+        -- Check if the new table name does not exist
+        IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = schema_name AND table_name = new_table_name
+        ) THEN
+            -- Build and execute the dynamic SQL statement
+            sql_query := 'ALTER TABLE ' || quote_ident(schema_name) || '.' || quote_ident(old_table_name) ||
+                         ' RENAME TO ' || quote_ident(new_table_name);
+            EXECUTE sql_query;
+            RETURN TRUE;
+        ELSE
+            -- New table name already exists
+            RETURN FALSE;
+        END IF;
+    ELSE
+        -- Old table does not exist
+        RETURN FALSE;
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
 
 -- Create an event trigger function
 CREATE OR REPLACE FUNCTION pgrst_watch() RETURNS event_trigger
@@ -158,6 +224,7 @@ $$;
 -- END;
 -- $$;
 
+-- add a schema to the project db
 -- CREATE OR REPLACE FUNCTION create_schema(schema_name TEXT)
 --   RETURNS BOOL
 --   LANGUAGE plpgsql

@@ -1,6 +1,7 @@
+CREATE SCHEMA private;
 
 -- get the columns name and datatype from the chosen table
-CREATE OR REPLACE FUNCTION get_columns_from_table(p_table_name TEXT)
+CREATE OR REPLACE FUNCTION get_columns_from_table(schema_name TEXT, p_table_name TEXT)
   RETURNS TABLE (col TEXT, data_type TEXT)
   AS $$
   BEGIN
@@ -15,7 +16,7 @@ CREATE OR REPLACE FUNCTION get_columns_from_table(p_table_name TEXT)
 
 
 -- get the constraints of each column in a table
-CREATE OR REPLACE FUNCTION get_column_constraints(p_table_name TEXT)
+CREATE OR REPLACE FUNCTION get_column_constraints(schema_name TEXT, p_table_name TEXT)
   RETURNS TABLE (column_name TEXT, constraint_name TEXT, nullable TEXT, constraint_type TEXT, column_default TEXT, check_clause TEXT)
   AS $$
   BEGIN
@@ -46,33 +47,34 @@ CREATE OR REPLACE FUNCTION get_column_constraints(p_table_name TEXT)
 
 -- adding descriptions to a table
 
-CREATE OR REPLACE FUNCTION add_table_comment(p_table_name TEXT, p_comment TEXT)
-  RETURNS VOID
-  AS $$
-  BEGIN
-    EXECUTE 'COMMENT ON TABLE ' || p_table_name || ' IS ' || quote_literal(p_comment);
-  END;
-  $$ LANGUAGE plpgsql;
+-- CREATE OR REPLACE FUNCTION add_table_comment(schema_name TEXT, p_table_name TEXT, p_comment TEXT)
+--   RETURNS VOID
+--   AS $$
+--   BEGIN
+--     EXECUTE 'COMMENT ON TABLE ' || p_table_name || ' IS ' || quote_literal(p_comment);
+--   END;
+--   $$ LANGUAGE plpgsql;
 
 -- viewing the table description
 
-CREATE OR REPLACE FUNCTION view_table_description(p_table_name TEXT)
-  RETURNS TEXT
-  AS $$
-  DECLARE
-    v_description TEXT;
-  BEGIN
-    SELECT description
-    INTO v_description
-    FROM pg_description
-    WHERE objoid = p_table_name::regclass;
+-- CREATE OR REPLACE FUNCTION view_table_description(schema_name TEXT, p_table_name TEXT)
+--   RETURNS TEXT
+--   AS $$
+--   DECLARE
+--     v_description TEXT;
+--   BEGIN
+--     SELECT description
+--     INTO v_description
+--     FROM pg_description
+--     WHERE objoid = p_table_name::regclass;
     
-    RETURN v_description;
-  END;
-  $$ LANGUAGE plpgsql;
+--     RETURN v_description;
+--   END;
+--   $$ LANGUAGE plpgsql;
 
 -- creating a new table, takes an arrays of statements for the columns
 CREATE OR REPLACE FUNCTION create_table(
+  schema_name text,
   table_name text,
   columns text[],
   primary_key_column text
@@ -85,8 +87,7 @@ BEGIN
   column_list := array_to_string(columns, ', ');
 
   -- Build the dynamic SQL statement
-  sql_stmt := format('CREATE TABLE %I (%s, PRIMARY KEY (%I))', table_name, column_list, primary_key_column);
-
+  sql_stmt := format('CREATE TABLE %I.%I (%s, PRIMARY KEY (%I))', schema_name, table_name, column_list, primary_key_column);
   -- Execute the dynamic SQL statement
   EXECUTE sql_stmt;
 
@@ -96,12 +97,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- deleting a table
-CREATE OR REPLACE FUNCTION delete_table(table_name text) RETURNS BOOL AS $$
+CREATE OR REPLACE FUNCTION delete_table(schema_name TEXT, table_name text) RETURNS BOOL AS $$
 DECLARE
   sql_stmt text;
 BEGIN
   -- Build the dynamic SQL statement
-  sql_stmt := format('DROP TABLE IF EXISTS %I', table_name);
+  sql_stmt := format('DROP TABLE IF EXISTS %I.%I', schema_name, table_name);
 
   -- Execute the dynamic SQL statement
   EXECUTE sql_stmt;
@@ -124,3 +125,46 @@ $$;
 CREATE EVENT TRIGGER pgrst_watch
   ON ddl_command_end
   EXECUTE PROCEDURE pgrst_watch();
+
+-- adds columns to an existing table
+CREATE OR REPLACE FUNCTION add_columns_to_table(
+  schema_name TEXT,
+  table_name TEXT,
+  column_definitions TEXT
+) RETURNS BOOL
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+  EXECUTE format('ALTER TABLE %I.%I ADD COLUMN %s', schema_name, table_name, column_definitions);
+  RETURN true;
+END;
+$$;
+
+-- adds foreign key constraints to an existing table
+
+-- CREATE OR REPLACE FUNCTION add_foreign_key_constraint(
+--   table_name TEXT,
+--   constraint_name TEXT,
+--   column_name TEXT,
+--   referenced_table_name TEXT,
+--   referenced_column_name TEXT
+-- ) RETURNS BOOL
+--   LANGUAGE plpgsql
+-- AS $$
+-- BEGIN
+--   EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES %I(%I)',
+--                  table_name, constraint_name, column_name, referenced_table_name, referenced_column_name);
+--   RETURN true;               
+-- END;
+-- $$;
+
+-- CREATE OR REPLACE FUNCTION create_schema(schema_name TEXT)
+--   RETURNS BOOL
+--   LANGUAGE plpgsql
+-- AS $$
+-- BEGIN
+--   EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I', schema_name);
+--   RETURN  true;
+-- END;
+-- $$;
+

@@ -464,7 +464,7 @@
                   "Ref": "Secret"
                 },
                 "\" >> /etc/environment\n",
-                "sudo echo -e PGRST_DB_SCHEMAS=\"public, private\" >> /etc/environment",
+                "echo \"export PGRST_DB_SCHEMAS=\"public, private\"\" >> /etc/environment\n",
                 "sudo -u ubuntu sh -c 'cd ~ && cd tinker-admin-cli/docker && sudo docker compose up -d'\n"
               ]
             ]

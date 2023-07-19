@@ -18,8 +18,8 @@ RETURNS TABLE (schema_name text)
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT schema_name
-    FROM information_schema.schemata;
+    SELECT schemata.schema_name::text
+    FROM information_schema.schemata as schemata;
 END;
 $$
 LANGUAGE plpgsql;

@@ -443,7 +443,7 @@
                 "curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -\n",
                 "sudo apt install nodejs -y\n",
                 "cd home/ubuntu && sudo git clone https://github.com/tinker-base/tinker-dashboard.git\n",
-                "sudo git clone https://github.com/tinker-base/tinker-admin-cli.git\n",
+                "sudo git clone -b refactor/passwords https://github.com/tinker-base/tinker-admin-cli.git\n",
                 "cd tinker-dashboard && sudo npm install -y\n",
 
                 "sudo chown ubuntu:ubuntu .env\n",

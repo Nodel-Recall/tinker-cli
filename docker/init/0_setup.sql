@@ -29,8 +29,13 @@ CREATE TABLE auth.users (
 );
 
 -- roles (authenticator, admin and anon) setup for frontend JWt
+CREATE OR REPLACE FUNCTION create_authenticator_role() RETURNS VOID AS $$
+BEGIN
+  EXECUTE format('CREATE ROLE authenticator LOGIN PASSWORD %L NOINHERIT NOCREATEDB NOCREATEROLE NOSUPERUSER;', current_setting('app.jwt_secret'));
+END;
+$$ LANGUAGE plpgsql;
 
-CREATE ROLE authenticator LOGIN PASSWORD 'password' NOINHERIT NOCREATEDB NOCREATEROLE NOSUPERUSER;
+SELECT create_authenticator_role();
 
 CREATE ROLE admin superuser LOGIN PASSWORD 'password' CREATEDB REPLICATION CREATEROLE;
 

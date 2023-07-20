@@ -11,7 +11,7 @@ services:
     environment:
       POSTGRES_DB: tinker
       POSTGRES_USER: tinker
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${PGRST_JWT_SECRET}
     volumes:
       - ./init:/docker-entrypoint-initdb.d
     # https://github.com/hasura/graphql-engine/issues/3737#issuecomment-575758127
@@ -37,7 +37,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      PGRST_DB_URI: postgres://authenticator:password@postgrest-db:5432/tinker
+      PGRST_DB_URI: postgres://authenticator:${PGRST_JWT_SECRET}@postgrest-db:5432/tinker
       PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3000
       PGRST_DB_SCHEMA: public
       PGRST_DB_ANON_ROLE: anon

@@ -39,6 +39,15 @@ const deleteAllProjects = async (jwt, cloudFormation, adminDomain) => {
   await Promise.all(waitProjectDeletionPromises);
 };
 
+async function exists(path) {
+  try {
+    await fs.access(path, fs.constants.F_OK);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 const destroy = async ({ force }) => {
   try {
     let confirmed;
@@ -68,7 +77,11 @@ const destroy = async ({ force }) => {
     await deleteKeys(process.env.REGION);
 
     await fs.writeFile(configFile, "");
-    await fs.unlink(sshPrivateKey);
+
+    const fileExists = await exists(sshPrivateKey);
+    if (fileExists) {
+      await fs.unlink(sshPrivateKey);
+    }
 
     spinner.succeed("Teardown complete!");
     log("");

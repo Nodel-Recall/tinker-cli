@@ -16,11 +16,11 @@ services:
       - ./init:/docker-entrypoint-initdb.d
     # https://github.com/hasura/graphql-engine/issues/3737#issuecomment-575758127
     command: postgres -c 'app.jwt_secret=${PGRST_JWT_SECRET}'
-  ##################
-  # postgrest-demo #
-  ##################
-  postgrest-demo:
-    container_name: postgrest-demo
+  ####################
+  # postgrest-server #
+  ####################
+  postgrest-server:
+    container_name: postgrest-server
     image: nginx:mainline-alpine
     ports:
       - "80:80"

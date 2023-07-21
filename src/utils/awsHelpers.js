@@ -143,6 +143,7 @@ export const setupAdminStackParams = (
 
 export const setupProjectStackParams = (
   StackName,
+  Secret,
   TemplateBody,
   RulePriority,
   InstanceType
@@ -154,6 +155,10 @@ export const setupProjectStackParams = (
       {
         ParameterKey: "ProjectName",
         ParameterValue: StackName,
+      },
+      {
+        ParameterKey: "Secret",
+        ParameterValue: Secret,
       },
       {
         ParameterKey: "RulePriority",

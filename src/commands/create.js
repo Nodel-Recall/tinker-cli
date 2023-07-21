@@ -61,6 +61,7 @@ const create = async ({ name, instance }) => {
 
     const stackParams = setupProjectStackParams(
       StackName,
+      process.env.SECRET,
       TemplateBody,
       RulePriority,
       InstanceType

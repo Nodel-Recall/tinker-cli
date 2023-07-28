@@ -14,7 +14,6 @@ CREATE OR REPLACE FUNCTION get_columns_from_table(schema_name TEXT, p_table_name
   $$
   LANGUAGE plpgsql;
 
-
 -- get the constraints of each column in a table
 CREATE OR REPLACE FUNCTION get_column_constraints(p_schema_name TEXT, p_table_name TEXT)
   RETURNS TABLE (column_name TEXT, data_type TEXT, character_maximum_length TEXT, constraint_name TEXT, nullable TEXT, constraint_type TEXT, column_default TEXT, check_clause TEXT)
@@ -47,7 +46,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---Drop column from a table 
+--Drop column from a table
 
 CREATE OR REPLACE FUNCTION drop_column_from_table(
   table_name TEXT,
@@ -115,8 +114,8 @@ $$
 BEGIN
     -- Check if the table exists
     IF EXISTS (
-        SELECT 1 
-        FROM information_schema.tables AS st 
+        SELECT 1
+        FROM information_schema.tables AS st
         WHERE st.table_schema = p_schema_name AND st.table_name = p_table_name
     ) THEN
         -- Build and execute the dynamic SQL statement to update the table's description
@@ -129,8 +128,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
-
 
 -- creating a new table, takes an arrays of statements for the columns
 CREATE OR REPLACE FUNCTION create_table(
@@ -172,7 +169,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
 -- edit table name
 CREATE OR REPLACE FUNCTION update_table_name(schema_name text, old_table_name text, new_table_name text)
 RETURNS BOOLEAN AS
@@ -209,7 +205,6 @@ END;
 $$
 LANGUAGE plpgsql;
 
-
 -- Create an event trigger function
 CREATE OR REPLACE FUNCTION pgrst_watch() RETURNS event_trigger
   LANGUAGE plpgsql
@@ -237,33 +232,3 @@ BEGIN
   RETURN true;
 END;
 $$;
-
--- adds foreign key constraints to an existing table
-
--- CREATE OR REPLACE FUNCTION add_foreign_key_constraint(
---   table_name TEXT,
---   constraint_name TEXT,
---   column_name TEXT,
---   referenced_table_name TEXT,
---   referenced_column_name TEXT
--- ) RETURNS BOOL
---   LANGUAGE plpgsql
--- AS $$
--- BEGIN
---   EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES %I(%I)',
---                  table_name, constraint_name, column_name, referenced_table_name, referenced_column_name);
---   RETURN true;               
--- END;
--- $$;
-
--- add a schema to the project db
--- CREATE OR REPLACE FUNCTION create_schema(schema_name TEXT)
---   RETURNS BOOL
---   LANGUAGE plpgsql
--- AS $$
--- BEGIN
---   EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I', schema_name);
---   RETURN  true;
--- END;
--- $$;
-

@@ -1,18 +1,7 @@
 -- Tinker DB setup
-
 CREATE SCHEMA auth;
 
--- previous project table where sercret was unique to each project
-
--- CREATE TABLE project (
---     name      VARCHAR(128)  PRIMARY KEY CONSTRAINT only_alphanumeric CHECK (name ~ '^[a-zA-Z][a-zA-Z0-9-]+$'),
---     ip        INET         NOT NULL UNIQUE,
---     secret    VARCHAR(40)  NOT NULL UNIQUE,
---     anon_jwt  VARCHAR(300) NOT NULL,
---     admin_jwt VARCHAR(300) NOT NULL
--- );
-
--- new projects table where the secret is the same as the admin app db
+-- projects table where the secret is the same as the admin app db
 CREATE TABLE projects (
     PRIMARY KEY (id),
     id     serial,
@@ -37,7 +26,7 @@ $$ LANGUAGE plpgsql;
 
 SELECT create_authenticator_role();
 
-CREATE ROLE admin superuser LOGIN PASSWORD 'password' CREATEDB REPLICATION CREATEROLE;
+CREATE ROLE admin superuser LOGIN CREATEDB REPLICATION CREATEROLE;
 
 GRANT admin TO authenticator;
 
@@ -52,7 +41,6 @@ GRANT SELECT ON ALL TABLES IN SCHEMA auth TO anon;
 
 -- needed pkg for encryption
 create extension if not exists pgcrypto;
-
 
 -- encrypt a password whenever a password is added / updated in the users table
 create or replace function
@@ -76,30 +64,6 @@ create trigger encrypt_password
 CREATE TYPE auth.jwt AS (
   token text
 );
-
--- Set app.jwt_secret in docker compose, so we don't need this function - Peter
-
---(
---store the secret as a property of the db
--- CREATE OR REPLACE FUNCTION auth.set_db_secret(secret TEXT)
--- RETURNS void AS
--- $$
--- BEGIN
---   EXECUTE 'ALTER DATABASE tinker SET "app.jwt_secret" TO ' || quote_literal(secret);
--- END;
--- $$
--- LANGUAGE plpgsql;
-
---store the secret as a property of the db (uses custon function set_db_secret())
--- SELECT auth.set_db_secret('zH4NRP1HMALxxCFnRZABFA7GOJtzU_gIj02alfL1lvI');
-
--- ALTER DATABASE postgres SET "app.jwt_secret" TO 'zH4NRP1HMALxxCFnRZABFA7GOJtzU_gIj02alfL1lvI';
---)
-
--- Install package 'pgjwt' for JWT generation in PSQL
--- git clone https://github.com/michelp/pgjwt.git
--- cd ./path/to/pgjwt
--- make install
 
 -- then create extension for pgjwt
 CREATE EXTENSION pgjwt;
@@ -134,4 +98,3 @@ $$ language plpgsql security definer;
 
 -- grant anon role access to login function
 grant execute on function login(text,text) to anon;
-

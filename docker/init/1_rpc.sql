@@ -1,4 +1,3 @@
-
 -- get all tables within a given schema
 CREATE OR REPLACE FUNCTION tables_in_schema(schema text)
 RETURNS TABLE (table_name text)
@@ -23,22 +22,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
--- deprecated login function
--- CREATE OR REPLACE FUNCTION get_user(input_email TEXT, input_password TEXT)
--- RETURNS table (username text, role text) AS
--- $$
-
--- BEGIN
---   RETURN QUERY
---   SELECT auth.users.username, users.role
---   FROM auth.users
---   WHERE email = input_email
---     AND password = crypt(input_password, auth.users.password);
-
--- END;
--- $$
--- LANGUAGE plpgsql;
 
 -- updated login function with jwt
 create or replace function
@@ -66,7 +49,6 @@ begin
 end;
 $$ language plpgsql security definer;
 
-
 -- get the role of the user logging in
 create or replace function
 auth.user_role(email text, password text) returns name
@@ -80,17 +62,6 @@ begin
   );
 end;
 $$;
-
--- create or replace function
--- auth.get_secret() returns text
---   language plpgsql
---   as $$
--- begin
---   return (
---     select secret from auth.secret
---   );
--- end;
--- $$;
 
 -- sign up and insert new user into auth.users table
 CREATE OR REPLACE FUNCTION insert_user(email text, password text, username text, role text)
